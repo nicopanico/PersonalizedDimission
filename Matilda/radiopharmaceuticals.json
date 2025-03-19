@@ -1,0 +1,22 @@
+[
+  {
+    "name": "I-131 Carcinoma Tiroideo",
+    "fr": [0.70, 0.30],
+    "lambda_eff": [2.16, 0.086]
+  },
+  {
+    "name": "I-131 Ipotiroidismo",
+    "fr": [0.80, 0.20],
+    "lambda_eff": [2.0, 0.10]
+  },
+  {
+    "name": "Lu-177-DOTATATE",
+    "fr": [0.65, 0.35],
+    "lambda_eff": [2.25, 0.174]
+  },
+  {
+    "name": "Lu-177-PSMA",
+    "fr": [0.80, 0.20],
+    "lambda_eff": [2.25, 0.213]
+  }
+]

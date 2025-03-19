@@ -1,0 +1,105 @@
+classdef DoseApp < matlab.apps.AppBase
+
+    % Componenti UI definiti in App Designer
+    properties (Access = public)
+        UIFigure             matlab.ui.Figure
+        ParametriPanel       matlab.ui.container.Panel
+        TDischargeField      matlab.ui.control.NumericEditField
+        R_TdisField          matlab.ui.control.NumericEditField
+        RadiofarmacoDropDown matlab.ui.control.DropDown
+        ScenarioGroup        matlab.ui.container.ButtonGroup
+        SiButton             matlab.ui.control.RadioButton
+        NoButton             matlab.ui.control.RadioButton
+        CalcolaDoseButton    matlab.ui.control.Button
+        RisultatiTextArea    matlab.ui.control.TextArea
+    end
+
+    % Proprieta' private per il core model (oggetti già creati)
+    properties (Access = private)
+        modello              % Oggetto ModelloLineare
+        fk                   % Oggetto Farmacocinetica
+    end
+
+    methods (Access = private)
+        
+        % Callback del pulsante "Calcola Dose"
+        function CalcolaDoseButtonPushed(app, event)
+            results = calcolateTime(app.TDischargeField.Value, ...
+                app.R_TdisField.Value, ...
+                app.RadiofarmacoDropDown.Value, ...
+                @Scenario.Madre, ... % se "Hai figli?" è selezionato
+                @Scenario.Ordinario_Familiare);
+
+            % Aggiorna l'area dei risultati
+            app.RisultatiTextArea.Value = { ...
+                sprintf('Dose totale (7 giorni restrizione): %.4f mSv', results.dose_totale), ...
+                sprintf('Periodo ottimale restrizione: %.2f giorni', results.Tres_ott) ...
+                };
+        end
+    end
+
+    methods (Access = public)
+
+        % Costruttore dell'app
+        function app = DoseApp
+            % Crea i componenti UI
+            createComponents(app);
+            
+            % Inizializza il modello geometrico (ModelloLineare)
+            app.modello = ModelloLineare(1.70, 0.058);
+            
+            % Inizializza il core model farmacocinetico con valori di default
+            app.fk = Farmacocinetica();
+            
+            % Registra l'app
+            registerApp(app, app.UIFigure);
+            if nargout == 0
+                clear app;
+            end
+        end
+
+        % Distruttore
+        function delete(app)
+            delete(app.UIFigure);
+        end
+    end
+
+    methods (Access = private)
+        % Funzione per creare i componenti UI
+        function createComponents(app)
+            % Crea la UIFigure
+            app.UIFigure = uifigure('Name','DoseApp');
+            app.UIFigure.Position = [100 100 600 400];
+
+            % Panel Parametri Clinici
+            app.ParametriPanel = uipanel(app.UIFigure, 'Title', 'Parametri Clinici', 'Position', [20 220 260 160]);
+            
+            % Campo per T_discharge
+            app.TDischargeField = uieditfield(app.ParametriPanel, 'numeric', 'Position', [20 100 100 22], 'Value', 0.25);
+            uilabel(app.ParametriPanel, 'Position', [130 100 120 22], 'Text', 'T_discharge (giorni)');
+            
+            % Campo per R_Tdis
+            app.R_TdisField = uieditfield(app.ParametriPanel, 'numeric', 'Position', [20 60 100 22], 'Value', 30);
+            uilabel(app.ParametriPanel, 'Position', [130 60 120 22], 'Text', 'R_{Tdis} (µSv/h)');
+            
+            % Dropdown per la selezione del radiofarmaco
+            app.RadiofarmacoDropDown = uidropdown(app.UIFigure, ...
+                'Items', {'I-131 Carcinoma Tiroideo', 'I-131 Ipotiroidismo', 'Lu-177-DOTATATE', 'Lu-177-PSMA'}, ...
+                'Position', [20 180 250 22]);
+            uilabel(app.UIFigure, 'Position', [280 180 150 22], 'Text', 'Radiofarmaco');
+
+            % Gruppo di RadioButton per "Hai figli?"
+            app.ScenarioGroup = uibuttongroup(app.UIFigure, 'Title', 'Hai figli?', 'Position', [20 140 250 30]);
+            app.SiButton = uiradiobutton(app.ScenarioGroup, 'Text', 'Si', 'Position', [10 5 50 22]);
+            app.NoButton = uiradiobutton(app.ScenarioGroup, 'Text', 'No', 'Position', [70 5 50 22]);
+            app.ScenarioGroup.SelectedObject = app.SiButton; % Default
+            
+            % Pulsante per calcolare la dose
+            app.CalcolaDoseButton = uibutton(app.UIFigure, 'push', 'Text', 'Calcola Dose', ...
+                'Position', [20 100 100 30], 'ButtonPushedFcn', @(btn,event) CalcolaDoseButtonPushed(app, event));
+            
+            % Area di testo per i risultati
+            app.RisultatiTextArea = uitextarea(app.UIFigure, 'Position', [20 20 550 60]);
+        end
+    end
+end
