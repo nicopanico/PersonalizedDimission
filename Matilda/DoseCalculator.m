@@ -34,7 +34,11 @@ classdef DoseCalculator
         function Tres_ottimale = trovaPeriodoRestrizione(obj, Dcons)
             % Definizione intervallo di ricerca
             Tmin = 0.1;  % Giorno minimo di restrizione
+<<<<<<< HEAD
             Tmax = 60;   % Giorno massimo di restrizione
+=======
+            Tmax = 30;   % Giorno massimo di restrizione
+>>>>>>> 36074557d97d1f3d41c7f5fc74ec8cae3f040556
             Tol = 0.01;  % Tolleranza sulla dose per fermare la ricerca
 
             % Inizializzazione
