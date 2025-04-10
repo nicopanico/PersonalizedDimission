@@ -3,75 +3,85 @@ classdef DoseCalculator
         scenarioRestrizione
         scenarioOrdinario
         farmacocinetica
-        R_Tdis % (µSv/h)
+        R_Tdis % µSv/h
     end
 
     methods
-        % Costruttore (perfetto)
         function obj = DoseCalculator(scenarioRestrizione, scenarioOrdinario, farmacocinetica, R_Tdis)
             obj.scenarioRestrizione = scenarioRestrizione;
-            obj.scenarioOrdinario = scenarioOrdinario;
-            obj.farmacocinetica = farmacocinetica;
-            obj.R_Tdis = R_Tdis;
+            obj.scenarioOrdinario   = scenarioOrdinario;
+            obj.farmacocinetica     = farmacocinetica;
+            obj.R_Tdis             = R_Tdis;
         end
 
-        % Metodo corretto definitivo dose totale
+        % Calcolo della dose totale come funzione di T_res (in giorni)
         function dose = calcolaDoseTotale(obj, T_res)
-            Fcorr_res = obj.scenarioRestrizione.calcolaFcorrScenario(1);
-            Fcorr_ord = obj.scenarioOrdinario.calcolaFcorrScenario(1);
-            somma_fk = 0;
-            for i=1:length(obj.farmacocinetica.fr)
-                lambda_i = obj.farmacocinetica.lambda_eff(i);
-                fr_i = obj.farmacocinetica.fr(i);
-                termine_res = Fcorr_res*(1-exp(-lambda_i*T_res));
-                termine_ord = Fcorr_ord*exp(-lambda_i*T_res);
-                somma_fk = somma_fk + (fr_i/lambda_i)*(termine_res + termine_ord);
+            % Se T_res=0 => dose solo scenario ordinario, ma tipicamente T_res>0
+            F_r = obj.scenarioRestrizione.calcolaFcorrScenario(1);
+            F_o = obj.scenarioOrdinario.calcolaFcorrScenario(1);
+
+            dose_tot = 0;
+            for i = 1:length(obj.farmacocinetica.fr)
+                fr_i     = obj.farmacocinetica.fr(i);
+                lambda_i = obj.farmacocinetica.lambda_eff(i);  % in 1/giorno
+
+                % Fase restrittiva: [0 -> T_res] (nessun *24, T_res in giorni)
+                dose_restr = (fr_i / lambda_i) * F_r * (1 - exp(-lambda_i * T_res));
+
+                % Fase ordinaria: [T_res -> ∞]
+                dose_ord  = (fr_i / lambda_i) * F_o * exp(-lambda_i * T_res);
+
+                dose_tot = dose_tot + dose_restr + dose_ord;
             end
-            dose = obj.R_Tdis * somma_fk * 24 / 1000; % mSv
+
+            % Moltiplico per R_Tdis (µSv/h)
+            % => devo convertire "dose_tot" in "ore" ? In realtà no,
+            %    la formula di Buonamici è costruita in modo che l'integrazione
+            %    dia come "unità" => "frazione della dose" da moltiplicare
+            %    per R_Tdis (µSv/h) * (un fattore?)
+            %
+            %    Nella derivazione "classica" se λ è in 1/h e T in h,
+            %    appare un *24. Qui λ in 1/g, T in g => niente *24.
+            %    R_Tdis -> µSv/h => per ottenere mSv, /1000.
+            %    E' "coerente" con la formula che usi negli esponenziali
+            %    in scenario restrittivo: (1 - e^-lambda * T_res) => T in giorni
+            %
+            % "Trick" per rimanere coerenti col paper:
+            dose = obj.R_Tdis * dose_tot / 1000;
         end
-        
-        % Metodo corretto definitivo periodo restrizione ottimale
+
         function Tres_ottimale = trovaPeriodoRestrizione(obj, Dcons)
-            % Definizione intervallo di ricerca
-            Tmin = 0.1;  % Giorno minimo di restrizione
-<<<<<<< HEAD
-            Tmax = 60;   % Giorno massimo di restrizione
-=======
-            Tmax = 30;   % Giorno massimo di restrizione
->>>>>>> 36074557d97d1f3d41c7f5fc74ec8cae3f040556
-            Tol = 0.01;  % Tolleranza sulla dose per fermare la ricerca
-
-            % Inizializzazione
-            Tres = Tmin;
-            dose_calcolata = obj.calcolaDoseTotale(Tres);
-
-            % Se già inferiore al constraint, restituisci direttamente
-            if dose_calcolata <= Dcons
-                Tres_ottimale = Tres;
+            if Dcons <= 0
+                Tres_ottimale = 0;
                 return;
             end
 
-            % Se già superiore anche a 30 giorni, restituisci warning
-            dose_max = obj.calcolaDoseTotale(Tmax);
-            if dose_max > Dcons
-                warning('Periodo superiore a 30 giorni!');
+            Tmin = 0.1;  % gg
+            Tmax = 60;   % gg
+            Tol  = 0.01;
+
+            if obj.calcolaDoseTotale(Tmin) <= Dcons
+                Tres_ottimale = Tmin;
+                return;
+            end
+
+            if obj.calcolaDoseTotale(Tmax) > Dcons
+                warning('Non si riesce a soddisfare Dcons anche con T_res=60 gg');
                 Tres_ottimale = Tmax;
                 return;
             end
 
-            % Ricerca iterativa ottimizzata (bisezione)
             while (Tmax - Tmin) > Tol
-                Tres = (Tmin + Tmax) / 2; % Media dell'intervallo
-                dose_calcolata = obj.calcolaDoseTotale(Tres);
-
-                if dose_calcolata > Dcons
-                    Tmin = Tres; % Aumenta il periodo minimo
+                Tmed = (Tmin + Tmax)/2;
+                dose_curr = obj.calcolaDoseTotale(Tmed);
+                if dose_curr > Dcons
+                    Tmin = Tmed;
                 else
-                    Tmax = Tres; % Diminuisci il massimo
+                    Tmax = Tmed;
                 end
             end
-
-            Tres_ottimale = Tres;
+            Tres_ottimale = (Tmin + Tmax)/2;
         end
     end
 end
+

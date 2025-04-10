@@ -31,7 +31,6 @@ classdef Farmacocinetica
                 somma_fk = somma_fk + (fr_i/lambda_i)*(termine_res + termine_ord);
             end
         end
-<<<<<<< HEAD
 
         % Metodo opzionale per stimare i parametri (fr e lambda_eff)
         % a partire da più misure di dose rate
@@ -80,9 +79,6 @@ classdef Farmacocinetica
             fprintf('Frazioni aggiornate per T_dis = %.2f giorni:\n', T_dis);
             fprintf('  f1 = %.4f, f2 = %.4f\n', obj.fr(1), obj.fr(2));
         end
-
-=======
->>>>>>> 36074557d97d1f3d41c7f5fc74ec8cae3f040556
     end
 end
 

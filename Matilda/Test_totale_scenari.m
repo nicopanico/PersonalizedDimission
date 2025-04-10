@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 %% Test completo del modello per vari scenari
 clear; clc;
 
@@ -47,7 +46,6 @@ for k = 1:length(scenari_restr)
     fprintf('- Periodo ottimale restrizione: %.2f giorni\n', Tres_ott);
     disp('-------------------------------------------------------');
 end
-=======
 % Parametri iniziali
 Gamma = 0.058;
 H = 1.70;
@@ -94,4 +92,3 @@ for k = 1:length(scenari)
     disp(['- Periodo ottimale restrizione: ', num2str(Tres_ott), ' giorni']);
     disp('-------------------------------------------------------');
 end
->>>>>>> 36074557d97d1f3d41c7f5fc74ec8cae3f040556

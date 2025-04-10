@@ -1,40 +1,22 @@
 [
   {
     "name": "I-131 Carcinoma Tiroideo",
-    "fr": [0.70, 0.30],
-<<<<<<< HEAD
-    "lambda_eff": [2.16, 0.086]
-=======
-    "lambda_eff": [2.16, 0.086]  
-    // Qui 2.16 = ln2/0.32 e 0.086 = ln2/8.04 (in 1/giorni)
->>>>>>> 36074557d97d1f3d41c7f5fc74ec8cae3f040556
+    "fr": [0.98, 0.02],
+    "lambda_eff": [1.04, 0.139]
   },
   {
     "name": "I-131 Ipotiroidismo",
-    "fr": [0.80, 0.20],
-    "lambda_eff": [2.0, 0.10]
+    "fr": [1.0, 0],
+    "lambda_eff": [1.11, 0]
   },
   {
-<<<<<<< HEAD
     "name": "Lu-177-DOTATATE",
-    "fr": [0.65, 0.35],
-    "lambda_eff": [2.25, 0.174]
+    "fr": [0.44, 0.56],
+    "lambda_eff": [2.25, 0.175]
   },
   {
     "name": "Lu-177-PSMA",
-    "fr": [0.80, 0.20],
-    "lambda_eff": [2.25, 0.213]
-=======
-    "name": "Lu177-DOTATATE",
     "fr": [0.44, 0.56],
-    "lambda_eff": [0.094, 0.0072]
-    // Ad esempio, 0.094 = ln2/7.4 (7.4 h in giorni ~0.308 days) e 0.0072 = ln2/95.6 (95.6 h in giorni ~3.983 days)
-  },
-  {
-    "name": "Lu177-PSMA",
-    "fr": [0.44, 0.56],
-    "lambda_eff": [0.094, 0.0089]
-    // Ad esempio, 0.0089 = ln2/78 (78 h in giorni ~3.25 days)
->>>>>>> 36074557d97d1f3d41c7f5fc74ec8cae3f040556
+    "lambda_eff": [2.25, 0.175]
   }
 ]
