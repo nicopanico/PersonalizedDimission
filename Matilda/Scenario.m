@@ -122,13 +122,15 @@ classdef Scenario
         %% SCENARI ORDINARI (DoseConstraint = 0)
 
         function sc = Ordinario_Partner(modello)
-            % Scenario "ordinario" di un partner:
-            % es. 8 ore a 0.5 m, 6 ore a 1 m, 10 ore a distanza "infinita".
-            % DoseConstraint = 0 poiché NON è una fase restrittiva.
-            nome = 'Ordinario Partner';
-            distanze = [0.5, 1, 999];
-            tempi    = [8,    6, 10];   % 8+6+10 = 24 h
-            sc = Scenario(nome, distanze, tempi, modello, 0);
+            nome = 'Partner_Tuning';
+            % 12 h a 0.3 m (molto vicino)
+            % 4 h a 1 m
+            % 2 h a 2 m
+            % 6 h a 999 m
+            distanze = [0.3, 1, 2, 999];
+            tempi    = [12,   4, 2, 6];
+            DoseConstraint = 0.3;
+            sc = Scenario(nome, distanze, tempi, modello, DoseConstraint);
         end
 
         function sc = Ordinario_Incinta(modello)

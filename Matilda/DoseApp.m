@@ -159,7 +159,7 @@ classdef DoseApp < matlab.apps.AppBase
                 end
                 idx = idx + 1;
             end
-            app.RisultatiTextArea.Value = resultsStr(:);
+            app.RisultatiTextArea.Value = cellstr(resultsStr(:));
         end
 
     end
