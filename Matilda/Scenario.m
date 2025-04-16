@@ -43,11 +43,10 @@ classdef Scenario
             %  - 8 ore a 999 m (distanza "infinita", dose irrilevante)
             % DoseConstraint = 0.3 mSv (come scenario "pubblico" o partner con soglia bassa)
 
-            nome = 'Partner';
-            distanze = [0.5, 1, 4, 999];
-            tempi    = [8,   6, 2, 8 ];  % totale 24 ore
+            nome = 'Partner_Tuning';
+            distanze = [1, 2.0, 4.0, 999];
+            tempi    = [10,   8,   4,   2];
             DoseConstraint = 0.3;
-
             sc = Scenario(nome, distanze, tempi, modello, DoseConstraint);
         end
 
@@ -128,9 +127,8 @@ classdef Scenario
             % 2 h a 2 m
             % 6 h a 999 m
             distanze = [0.3, 1, 2, 999];
-            tempi    = [12,   4, 2, 6];
-            DoseConstraint = 0.3;
-            sc = Scenario(nome, distanze, tempi, modello, DoseConstraint);
+            tempi    = [10,  4, 2, 6];
+            sc = Scenario(nome, distanze, tempi, modello, 0);
         end
 
         function sc = Ordinario_Incinta(modello)
