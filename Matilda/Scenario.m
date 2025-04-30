@@ -1,173 +1,80 @@
 classdef Scenario
+    % Scenario di esposizione – versione “tuning” secondo Banci Buonamici 2025
+    % Unità: distanze in metri  |  tempi in ore/giorno  |  DoseConstraint in mSv
     properties
-        nome            % Nome dello scenario (es. "Madre con bambino piccolo")
-        distanze        % Vettore delle distanze (in m)
-        tempi           % Vettore dei tempi di esposizione (ore al giorno)
-        DoseConstraint  % Limite di dose per lo scenario restrittivo (in mSv); per lo scenario ordinario si pone a 0
-        modello         % Oggetto di tipo ModelloGeometrico (es. ModelloLineare)
+        nome            string
+        distanze        double
+        tempi           double
+        DoseConstraint  double
+        modello        
     end
-    
+
     methods
-        % Costruttore
         function obj = Scenario(nome, distanze, tempi, modello, DoseConstraint)
-            obj.nome = nome;
-            obj.distanze = distanze;
-            obj.tempi = tempi;
-            obj.modello = modello;
-            if nargin < 5
-                obj.DoseConstraint = NaN;
-            else
-                obj.DoseConstraint = DoseConstraint;
-            end
+            obj.nome           = nome;
+            obj.distanze       = distanze;
+            obj.tempi          = tempi;
+            obj.modello        = modello;
+            if nargin < 5, DoseConstraint = 0; end
+            obj.DoseConstraint = DoseConstraint;
         end
-        
-        % Metodo per calcolare il fattore di correzione complessivo dello scenario
+
+        % -------- Fattore di correzione geometrico giornaliero ----------
         function Fcorr_scenario = calcolaFcorrScenario(obj, A_tot)
+            if nargin < 2, A_tot = 1; end
             Fcorr_scenario = 0;
-            for k = 1:length(obj.distanze)
-                Fcorr = obj.modello.calcolaFattoreCorrezione(obj.distanze(k), 1, A_tot);
-                Fcorr_scenario = Fcorr_scenario + (obj.tempi(k)/24) * Fcorr;
+            for k = 1:numel(obj.distanze)
+                Fcorr = obj.modello.calcolaFattoreCorrezione(obj.distanze(k),1,A_tot);
+                Fcorr_scenario = Fcorr_scenario + (obj.tempi(k)/24)*Fcorr;
             end
         end
     end
 
+    % ===================== FACTORY STATICHE ============================ %
     methods (Static)
-        %% SCENARI RISTRETTIVI (DoseConstraint > 0)
-
-        function sc = Partner(modello)
-            % Partner in piccolo appartamento, scenario restrittivo
-            % Esempio:
-            %  - 8 ore a 0.5 m
-            %  - 6 ore a 1   m
-            %  - 2 ore a 4   m
-            %  - 8 ore a 999 m (distanza "infinita", dose irrilevante)
-            % DoseConstraint = 0.3 mSv (come scenario "pubblico" o partner con soglia bassa)
-
-            nome = 'Partner_Tuning';
-            distanze = [1, 2.0, 4.0, 999];
-            tempi    = [10,   8,   4,   2];
-            DoseConstraint = 0.3;
-            sc = Scenario(nome, distanze, tempi, modello, DoseConstraint);
+        %% -------- Restrittivi --------
+        function sc = Partner(m)
+            sc = Scenario("Partner restr.", [0.3 1 4], [2 4 18], m, 3);
+        end
+        function sc = TrasportoPubblico(m)
+            sc = Scenario("Trasporto restr.", [0.5 4], [0.5 23.5], m, 0.3);
+        end
+        function sc = Bambino_0_2(m)
+            sc = Scenario("Bambino <2 restr.", [0.1 0.3 2], [1 3 20], m, 1);
+        end
+        function sc = Bambino_2_5(m)
+            sc = Scenario("Bambino 2–5 restr.", [0.1 0.5 2], [1 3 20], m, 1);
+        end
+        function sc = Bambino_5_11(m)
+            sc = Scenario("Bambino 5–11 restr.", [0.1 0.5 2], [0.5 2 21.5], m, 1);
+        end
+        function sc = DonnaIncinta(m)
+            sc = Scenario("Incinta restr.", [1 2], [4 20], m, 1);
+        end
+        function sc = Colleghi(m)
+            sc = Scenario("Colleghi restr.", [1 2], [2 22], m, 0.3);
         end
 
-        function sc = Incinta(modello)
-            % Donna incinta convivente (molto cautelativo)
-            % Esempio:
-            %  - 6 ore a 1   m
-            %  - 10 ore a 2  m
-            %  - 4  ore a 4  m
-            %  - 4  ore a 999 m
-            % DoseConstraint = 0.3 mSv (spesso usato per soggetti "fragili" o pubblic)
-
-            nome = 'Incinta';
-            distanze = [1, 2, 4, 999];
-            tempi    = [6, 10, 4, 4 ];
-            DoseConstraint = 0.3;
-
-            sc = Scenario(nome, distanze, tempi, modello, DoseConstraint);
+        %% -------- Ordinari --------
+        function sc = Ordinario_Partner(m)
+            sc = Scenario("Partner ord.", [1 2 4], [8 6 10], m, 0);
+        end
+        function sc = Ordinario_Trasporto(m)
+            sc = Scenario("Trasporto ord.", [0.5 1 2], [0.5 3 20.5], m, 0);
+        end
+        function sc = Ordinario_Bambino(m)
+            sc = Scenario("Bambino ord.", [0.3 1 2], [2 6 16], m, 0);
+        end
+        function sc = Ordinario_Incinta(m)
+            sc = Scenario("Incinta ord.", [1 2], [6 18], m, 0);
+        end
+        function sc = Ordinario_Colleghi(m)
+            sc = Scenario("Colleghi ord.", [2 4], [8 16], m, 0);
         end
 
-        function sc = Madre(modello)
-            % Madre con bambino piccolo
-            % Esempio:
-            %  - 4.5 ore a 1 m
-            %  - 6   ore a 1.5 m
-            %  - 2.5 ore a 4 m
-            %  - 11  ore a 999 m
-            % Sovente Buonamici suggerisce 1 mSv per i familiari stretti.
-
-            nome = 'Madre';
-            distanze = [1,   1.5, 4, 999];
-            tempi    = [4.5, 6,   2.5, 11];
-            DoseConstraint = 1.0;
-            % (Valore più alto di 0.3, perché spesso i familiari possono arrivare a 1 mSv)
-
-            sc = Scenario(nome, distanze, tempi, modello, DoseConstraint);
-        end
-
-        function sc = Collega(modello)
-            % Collega di lavoro
-            % Esempio:
-            %  - 4 ore a 0.5 m (scrivania vicina, pausa caffè, ecc.)
-            %  - 4 ore a 2   m (in ufficio ma non a contatto stretto)
-            %  - 16 ore a 999 m (fuori dall'ufficio, dose ~0)
-            % DoseConstraint = 0.3 mSv (pubblico)
-
-            nome = 'Collega';
-            distanze = [0.5, 2, 999];
-            tempi    = [4,   4, 16];  % 24 ore
-            DoseConstraint = 0.3;
-
-            sc = Scenario(nome, distanze, tempi, modello, DoseConstraint);
-        end
-
-        function sc = Caregiver(modello)
-            % Caregiver a domicilio
-            % Esempio:
-            %  - 1 ora a 0.5 m (assistenza ravvicinata)
-            %  - 8 ore a 1   m (presenza in casa)
-            %  - 15 ore a 999 m (dose ~0)
-            % Sovente si usa 1 mSv se è un familiare stretto; in altri contesti 0.3.
-
-            nome = 'Caregiver';
-            distanze = [0.5, 1, 999];
-            tempi    = [1,   8, 15];
-            DoseConstraint = 1.0;
-
-            sc = Scenario(nome, distanze, tempi, modello, DoseConstraint);
-        end
-
-
-        %% SCENARI ORDINARI (DoseConstraint = 0)
-
-        function sc = Ordinario_Partner(modello)
-            nome = 'Partner_Tuning';
-            % 12 h a 0.3 m (molto vicino)
-            % 4 h a 1 m
-            % 2 h a 2 m
-            % 6 h a 999 m
-            distanze = [0.3, 1, 2, 999];
-            tempi    = [10,  4, 2, 6];
-            sc = Scenario(nome, distanze, tempi, modello, 0);
-        end
-
-        function sc = Ordinario_Incinta(modello)
-            % Scenario ordinario per donna incinta convivente:
-            % es. 6 ore a 1 m, 10 ore a 2 m, 8 ore a distanza "infinita".
-            nome = 'Ordinario Incinta';
-            distanze = [1, 2, 999];
-            tempi    = [6, 10, 8];  % totale 24 h
-            sc = Scenario(nome, distanze, tempi, modello, 0);
-        end
-
-        function sc = Ordinario_Madre(modello)
-            % Scenario ordinario per madre (bambino non troppo piccolo), ad esempio:
-            % 4 ore a 0.5 m, 8 ore a 1.5 m, 12 ore a 999 m.
-            nome = 'Ordinario Madre';
-            distanze = [0.5, 1.5, 999];
-            tempi    = [4,    8,   12];  % 4+8+12=24
-            sc = Scenario(nome, distanze, tempi, modello, 0);
-        end
-
-        function sc = Ordinario_Collega(modello)
-            % Scenario ordinario per un collega di lavoro.
-            % Ad esempio:
-            % 2 ore a 0.5 m (colazione, pausa), 6 ore a 2 m (ufficio),
-            % 16 ore a 999 m (non si vedono il resto del giorno).
-            nome = 'Ordinario Collega';
-            distanze = [0.5, 2, 999];
-            tempi    = [2,   6, 16];
-            sc = Scenario(nome, distanze, tempi, modello, 0);
-        end
-
-        function sc = Ordinario_Caregiver(modello)
-            % Scenario ordinario per un caregiver che comunque vive con il paziente,
-            % ma in modo meno “restrittivo” rispetto ai primi giorni.
-            % Esempio: 1 ora a 0.5 m, 8 ore a 1 m, 15 ore a 999 m.
-            nome = 'Ordinario Caregiver';
-            distanze = [0.5, 1, 999];
-            tempi    = [1,   8, 15];
-            sc = Scenario(nome, distanze, tempi, modello, 0);
+        %% Ordinario generico
+        function sc = OrdinarioBasico(m)
+            sc = Scenario("Ordinario", 999, 24, m, 0);
         end
     end
 end

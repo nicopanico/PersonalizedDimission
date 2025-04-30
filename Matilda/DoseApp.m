@@ -17,21 +17,15 @@ classdef DoseApp < matlab.apps.AppBase
         RadiofarmacoDropDown     matlab.ui.control.DropDown
         CalcolaDoseButton        matlab.ui.control.Button
 
-        % Colonna 2: Scenari
-        ScenariPanel             matlab.ui.container.Panel
-        RestrittiviPanel         matlab.ui.container.Panel
-        PartnerCheckBox          matlab.ui.control.CheckBox
-        IncintaCheckBox          matlab.ui.control.CheckBox
-        MadreCheckBox            matlab.ui.control.CheckBox
-        CollegaCheckBox          matlab.ui.control.CheckBox
-        CaregiverCheckBox        matlab.ui.control.CheckBox
-
-        OrdinariPanel            matlab.ui.container.Panel
-        PartnerOrdCheckBox       matlab.ui.control.CheckBox
-        IncintaOrdCheckBox       matlab.ui.control.CheckBox
-        MadreOrdCheckBox         matlab.ui.control.CheckBox
-        CollegaOrdCheckBox       matlab.ui.control.CheckBox
-        CaregiverOrdCheckBox     matlab.ui.control.CheckBox
+        % Colonna Scenari (unica)
+        ScenariPanel         matlab.ui.container.Panel
+        PartnerCheckBox      matlab.ui.control.CheckBox
+        TrasportoCheckBox    matlab.ui.control.CheckBox
+        Bambino02CheckBox    matlab.ui.control.CheckBox
+        Bambino25CheckBox    matlab.ui.control.CheckBox
+        Bambino511CheckBox   matlab.ui.control.CheckBox
+        IncintaCheckBox      matlab.ui.control.CheckBox
+        ColleghiCheckBox     matlab.ui.control.CheckBox
 
         % Colonna 3: Risultati
         RisultatiPanel           matlab.ui.container.Panel
@@ -41,9 +35,9 @@ classdef DoseApp < matlab.apps.AppBase
 
     properties (Access = private)
         modello       % Oggetto ModelloLineare
-        scenarioMap   % Mappa (restrittivo -> ordinario) per linkare scenari
+        pairMap       % Mappa nome->factory restrittivo    
+        pairMapOrd
     end
-
     methods (Access = private)
 
         function PlotDoseButtonPushed(app)
@@ -55,39 +49,28 @@ classdef DoseApp < matlab.apps.AppBase
             % Carica la farmacocinetica
             rph = loadRadiopharmaceutical(selectedRF, 'radiopharmaceuticals.json');
             fk = Farmacocinetica(rph.fr, rph.lambda_eff);
-            
+
             % T_discharge in giorni e lambda_eff in 1/giorno => nessuna *24
             fk = fk.aggiornaFrazioni(T_discharge);
 
             % Trova un singolo scenario restrittivo
-            restrName = '';
-            if app.PartnerCheckBox.Value
-                restrName = 'Partner';
-            elseif app.IncintaCheckBox.Value
-                restrName = 'Incinta';
-            elseif app.MadreCheckBox.Value
-                restrName = 'Madre';
-            elseif app.CollegaCheckBox.Value
-                restrName = 'Collega';
-            elseif app.CaregiverCheckBox.Value
-                restrName = 'Caregiver';
-            end
+           restrName = '';
+           if     app.PartnerCheckBox.Value,    restrName = 'Partner';
+           elseif app.TrasportoCheckBox.Value,  restrName = 'Trasporto';
+           elseif app.Bambino02CheckBox.Value,  restrName = 'Bambino02';
+           elseif app.Bambino25CheckBox.Value,  restrName = 'Bambino25';
+           elseif app.Bambino511CheckBox.Value, restrName = 'Bambino511';
+           elseif app.IncintaCheckBox.Value,    restrName = 'Incinta';
+           elseif app.ColleghiCheckBox.Value,   restrName = 'Colleghi';
+           end
+
             if isempty(restrName)
                 uialert(app.UIFigure, 'Seleziona uno scenario restrittivo.', 'Attenzione');
                 return;
             end
 
-            restrFunc = DoseApp.scenarioStr2Func(restrName);
-            restr = restrFunc(app.modello);
-
-            % Ordinario corrispondente
-            if isfield(app.scenarioMap, restrName)
-                ordName = app.scenarioMap.(restrName);
-                ordFunc = DoseApp.scenarioStr2Func(ordName);
-                ord = ordFunc(app.modello);
-            else
-                ord = Scenario('Nessun Ordinario',[],[],app.modello,0);
-            end
+            restr = app.pairMap.(restrName)(app.modello);
+            ord   = app.pairMapOrd.(restrName)(app.modello);
 
             % Calcola e plotta
             dc = DoseCalculator(restr, ord, fk, R_Tdis);
@@ -95,74 +78,48 @@ classdef DoseApp < matlab.apps.AppBase
         end
 
         function CalcolaDoseButtonPushed(app, ~)
-            T_discharge = app.TDischargeField.Value;  % giorni
-            R_Tdis      = app.R_TdisField.Value;       % µSv/h a 1 m
-            attivita    = app.AttivitaField.Value;
-            selectedRF  = app.RadiofarmacoDropDown.Value;
+            names = {};
+            if app.PartnerCheckBox.Value,    names{end+1} = 'Partner';    end
+            if app.TrasportoCheckBox.Value,  names{end+1} = 'Trasporto';  end
+            if app.Bambino02CheckBox.Value,  names{end+1} = 'Bambino02';  end
+            if app.Bambino25CheckBox.Value,  names{end+1} = 'Bambino25';  end
+            if app.Bambino511CheckBox.Value, names{end+1} = 'Bambino511'; end
+            if app.IncintaCheckBox.Value,    names{end+1} = 'Incinta';    end
+            if app.ColleghiCheckBox.Value,   names{end+1} = 'Colleghi';   end
 
-            restrNames = {};
-            if app.PartnerCheckBox.Value
-                restrNames{end+1} = 'Partner'; end
-            if app.IncintaCheckBox.Value
-                restrNames{end+1} = 'Incinta'; end
-            if app.MadreCheckBox.Value
-                restrNames{end+1} = 'Madre'; end
-            if app.CollegaCheckBox.Value
-                restrNames{end+1} = 'Collega'; end
-            if app.CaregiverCheckBox.Value
-                restrNames{end+1} = 'Caregiver'; end
-
-            ordNames = {};
-            if app.PartnerOrdCheckBox.Value
-                ordNames{end+1} = 'Ordinario_Partner'; end
-            if app.IncintaOrdCheckBox.Value
-                ordNames{end+1} = 'Ordinario_Incinta'; end
-            if app.MadreOrdCheckBox.Value
-                ordNames{end+1} = 'Ordinario_Madre'; end
-            if app.CollegaOrdCheckBox.Value
-                ordNames{end+1} = 'Ordinario_Collega'; end
-            if app.CaregiverOrdCheckBox.Value
-                ordNames{end+1} = 'Ordinario_Caregiver'; end
-
-            if isempty(restrNames)
-                app.RisultatiTextArea.Value = "Seleziona almeno uno scenario restrittivo.";
+            if isempty(names)
+                app.RisultatiTextArea.Value = "Seleziona almeno uno scenario.";
                 return;
             end
 
-            resultsStr = {};
-            idx = 1;
-            for i = 1:length(restrNames)
-                rName = restrNames{i};
-                if isfield(app.scenarioMap, rName)
-                    ordCandidate = app.scenarioMap.(rName);
-                    if ismember(ordCandidate, ordNames)
-                        res = calcolateTime(T_discharge, R_Tdis, selectedRF, ...
-                                            DoseApp.scenarioStr2Func(rName), ...
-                                            DoseApp.scenarioStr2Func(ordCandidate), ...
-                                            app.modello, attivita);
-                        resultsStr{idx} = sprintf("Restr: %s + Ord: %s --> Dose: %.3f mSv, T_res: %.2f gg", ...
-                            rName, ordCandidate, res.dose_totale, res.Tres_ott);
-                    else
-                        res = calcolateTime(T_discharge, R_Tdis, selectedRF, ...
-                                            DoseApp.scenarioStr2Func(rName), [], ...
-                                            app.modello, attivita);
-                        resultsStr{idx} = sprintf("Restr: %s (no Ord) --> Dose: %.3f mSv, T_res: %.2f gg", ...
-                            rName, res.dose_totale, res.Tres_ott);
-                    end
-                else
-                    % non esiste la chiave
-                    res = calcolateTime(T_discharge, R_Tdis, selectedRF, ...
-                                        DoseApp.scenarioStr2Func(rName), [], ...
-                                        app.modello, attivita);
-                    resultsStr{idx} = sprintf("Restr: %s (no Ord corrispondente) --> Dose: %.3f mSv, T_res: %.2f gg", ...
-                        rName, res.dose_totale, res.Tres_ott);
-                end
-                idx = idx + 1;
-            end
-            app.RisultatiTextArea.Value = cellstr(resultsStr(:));
-        end
+            T_dis  = app.TDischargeField.Value;
+            R_Tdis = app.R_TdisField.Value;
+            RF     = app.RadiofarmacoDropDown.Value;
 
+            results = {};
+            for k = 1:numel(names)
+                restr = app.pairMap.(names{k})(app.modello);
+                ord   = app.pairMapOrd.(names{k})(app.modello);
+                rph = loadRadiopharmaceutical(RF,'radiopharmaceuticals.json');
+                fk  = Farmacocinetica(rph.fr,rph.lambda_eff).aggiornaFrazioni(T_dis);
+
+                dc  = DoseCalculator(restr,ord,fk,R_Tdis);
+                Tres = dc.trovaPeriodoRestrizione(restr.DoseConstraint);
+                results{k} = sprintf('%s  →  T_res = %.1f gg, Dose7g = %.2f mSv', ...
+                    restr.nome, Tres, dc.calcolaDoseTotale(7));
+            end
+            app.RisultatiTextArea.Value = results.';
+        end
     end
+
+    methods (Static)
+        function sc = Ordinario_Partner(m)    , sc = Scenario('PartnerOrd',[1 2 999], [12 6 6], m, 0); end
+        function sc = Ordinario_Trasporto(m)  , sc = Scenario('TrasportoOrd',[0.5 999],[0.5 23.5],m,0); end
+        function sc = Ordinario_Bambino(m)    , sc = Scenario('BambinoOrd',[0.3 1 999],[2 6 16],m,0); end
+        function sc = Ordinario_Incinta(m)    , sc = Scenario('IncintaOrd',[2 999],[6 18],m,0); end
+        function sc = Ordinario_Colleghi(m)   , sc = Scenario('ColleghiOrd',[2 999],[8 16],m,0); end
+    end
+
 
     methods (Access = private)
         function plotDoseCurve(app, dc, restr, ord, fk, R_Tdis, selectedRF)
@@ -228,55 +185,39 @@ classdef DoseApp < matlab.apps.AppBase
     methods (Access = public)
         function app = DoseApp
             createComponents(app);
-            % QUI USO Il MODELLO con H=1.70, gamma calcolata
+
+            % Modello lineare con altezza 1.70 m (Γ calcolata)
             app.modello = ModelloLineare(1.70);
 
-            app.scenarioMap = struct( ...
-                'Partner',   'Ordinario_Partner', ...
-                'Incinta',   'Ordinario_Incinta', ...
-                'Madre',     'Ordinario_Madre', ...
-                'Collega',   'Ordinario_Collega', ...
-                'Caregiver', 'Ordinario_Caregiver');
+            % Nuova mappa: nome checkbox → factory dello SCENARIO RESTRITTIVO
+            % (l’ordinario è sempre Scenario.OrdinarioBasico)
+            app.pairMap = struct( ...
+                'Partner',    @Scenario.Partner, ...
+                'Trasporto',  @Scenario.TrasportoPubblico, ...
+                'Bambino02',  @Scenario.Bambino_0_2, ...
+                'Bambino25',  @Scenario.Bambino_2_5, ...
+                'Bambino511', @Scenario.Bambino_5_11, ...
+                'Incinta',    @Scenario.DonnaIncinta, ...
+                'Colleghi',   @Scenario.Colleghi );
+            app.pairMapOrd = struct( ...
+                'Partner',    @Scenario.Ordinario_Partner, ...
+                'Trasporto',  @Scenario.Ordinario_Trasporto, ...
+                'Bambino02',  @Scenario.Ordinario_Bambino, ...
+                'Bambino25',  @Scenario.Ordinario_Bambino, ...
+                'Bambino511', @Scenario.Ordinario_Bambino, ...
+                'Incinta',    @Scenario.Ordinario_Incinta, ...
+                'Colleghi',   @Scenario.Ordinario_Colleghi );
 
             registerApp(app, app.UIFigure);
-            if nargout == 0
-                clear app;
-            end
+            if nargout == 0, clear app; end
         end
+        
 
         function delete(app)
             delete(app.UIFigure);
         end
     end
 
-    methods (Static)
-        function funcHandle = scenarioStr2Func(str)
-            switch str
-                case 'Partner'
-                    funcHandle = @Scenario.Partner;
-                case 'Incinta'
-                    funcHandle = @Scenario.Incinta;
-                case 'Madre'
-                    funcHandle = @Scenario.Madre;
-                case 'Collega'
-                    funcHandle = @Scenario.Collega;
-                case 'Caregiver'
-                    funcHandle = @Scenario.Caregiver;
-                case 'Ordinario_Partner'
-                    funcHandle = @Scenario.Ordinario_Partner;
-                case 'Ordinario_Incinta'
-                    funcHandle = @Scenario.Ordinario_Incinta;
-                case 'Ordinario_Madre'
-                    funcHandle = @Scenario.Ordinario_Madre;
-                case 'Ordinario_Collega'
-                    funcHandle = @Scenario.Ordinario_Collega;
-                case 'Ordinario_Caregiver'
-                    funcHandle = @Scenario.Ordinario_Caregiver;
-                otherwise
-                    error('Scenario non riconosciuto: %s', str);
-            end
-        end
-    end
 
     methods (Access = private)
         function createComponents(app)
@@ -326,30 +267,19 @@ classdef DoseApp < matlab.apps.AppBase
                 'Position',[140 5 120 28], ...
                 'ButtonPushedFcn', @(btn,event) PlotDoseButtonPushed(app));
 
-            %% Colonna 2 - Scenari
-            app.ScenariPanel = uipanel(app.GridLayout, 'Title','Scenari');
+            %% Colonna 2 – Scenari di esposizione
+            app.ScenariPanel = uipanel(app.GridLayout,'Title','Scenari di esposizione');
             app.ScenariPanel.Layout.Column = 2;
+            glSc = uigridlayout(app.ScenariPanel,[7,1]);
 
-            gl2 = uigridlayout(app.ScenariPanel, [2,1]);
-            gl2.RowHeight = {'fit','fit'};
+            app.PartnerCheckBox    = uicheckbox(glSc,'Text','Partner');
+            app.TrasportoCheckBox  = uicheckbox(glSc,'Text','Trasporto pubblico');
+            app.Bambino02CheckBox  = uicheckbox(glSc,'Text','Bambino <2 aa');
+            app.Bambino25CheckBox  = uicheckbox(glSc,'Text','Bambino 2–5 aa');
+            app.Bambino511CheckBox = uicheckbox(glSc,'Text','Bambino 5–11 aa');
+            app.IncintaCheckBox    = uicheckbox(glSc,'Text','Donna incinta');
+            app.ColleghiCheckBox   = uicheckbox(glSc,'Text','Colleghi lavoro');
 
-            % SCENARI RISTRETTIVI
-            app.RestrittiviPanel = uipanel(gl2, 'Title','Scenari Restrittivi');
-            gl2a = uigridlayout(app.RestrittiviPanel, [5,1]);
-            app.PartnerCheckBox    = uicheckbox(gl2a, 'Text','Partner in piccolo appartamento');
-            app.IncintaCheckBox    = uicheckbox(gl2a, 'Text','Donna incinta convivente');
-            app.MadreCheckBox      = uicheckbox(gl2a, 'Text','Madre con bambino');
-            app.CollegaCheckBox    = uicheckbox(gl2a, 'Text','Collega di lavoro');
-            app.CaregiverCheckBox  = uicheckbox(gl2a, 'Text','Caregiver a domicilio');
-
-            % SCENARI ORDINARI
-            app.OrdinariPanel = uipanel(gl2, 'Title','Scenari Ordinari');
-            gl2b = uigridlayout(app.OrdinariPanel, [5,1]);
-            app.PartnerOrdCheckBox     = uicheckbox(gl2b, 'Text','Ord. Partner');
-            app.IncintaOrdCheckBox     = uicheckbox(gl2b, 'Text','Ord. Donna incinta');
-            app.MadreOrdCheckBox       = uicheckbox(gl2b, 'Text','Ord. Madre con figlio');
-            app.CollegaOrdCheckBox     = uicheckbox(gl2b, 'Text','Ord. Collega');
-            app.CaregiverOrdCheckBox   = uicheckbox(gl2b, 'Text','Ord. Caregiver');
 
             %% Colonna 3 - Risultati
             app.RisultatiPanel = uipanel(app.GridLayout, 'Title','Risultati');
