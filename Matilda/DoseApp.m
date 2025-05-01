@@ -112,14 +112,6 @@ classdef DoseApp < matlab.apps.AppBase
         end
     end
 
-    methods (Static)
-        function sc = Ordinario_Partner(m)    , sc = Scenario('PartnerOrd',[1 2 999], [12 6 6], m, 0); end
-        function sc = Ordinario_Trasporto(m)  , sc = Scenario('TrasportoOrd',[0.5 999],[0.5 23.5],m,0); end
-        function sc = Ordinario_Bambino(m)    , sc = Scenario('BambinoOrd',[0.3 1 999],[2 6 16],m,0); end
-        function sc = Ordinario_Incinta(m)    , sc = Scenario('IncintaOrd',[2 999],[6 18],m,0); end
-        function sc = Ordinario_Colleghi(m)   , sc = Scenario('ColleghiOrd',[2 999],[8 16],m,0); end
-    end
-
 
     methods (Access = private)
         function plotDoseCurve(app, dc, restr, ord, fk, R_Tdis, selectedRF)
@@ -156,8 +148,8 @@ classdef DoseApp < matlab.apps.AppBase
                 % Attenzione: R_Tdis è un rate in µSv/h @ T_dis, 
                 % ma qui la formula di Buonamici è normalizzata in 1/giorno. 
                 % => usiamo la stessa identica formula di calcolaDoseTotale() 
-                dose_restr(j) = R_Tdis * sum_r / 1000;
-                dose_ordin(j) = R_Tdis * sum_o / 1000;
+                dose_restr(j) = R_Tdis *24* sum_r / 1000;
+                dose_ordin(j) = R_Tdis *24* sum_o / 1000;
                 dose_tot(j)   = dose_restr(j) + dose_ordin(j);
             end
 
@@ -198,7 +190,7 @@ classdef DoseApp < matlab.apps.AppBase
                 'Bambino25',  @Scenario.Bambino_2_5, ...
                 'Bambino511', @Scenario.Bambino_5_11, ...
                 'Incinta',    @Scenario.DonnaIncinta, ...
-                'Colleghi',   @Scenario.Colleghi );
+                'Colleghi',   @Scenario.NessunaRestr );
             app.pairMapOrd = struct( ...
                 'Partner',    @Scenario.Ordinario_Partner, ...
                 'Trasporto',  @Scenario.Ordinario_Trasporto, ...

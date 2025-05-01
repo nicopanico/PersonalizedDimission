@@ -47,7 +47,7 @@ classdef DoseCalculator
             %    in scenario restrittivo: (1 - e^-lambda * T_res) => T in giorni
             %
             % "Trick" per rimanere coerenti col paper:
-            dose = obj.R_Tdis * dose_tot / 1000;
+            dose = obj.R_Tdis *24* dose_tot / 1000;
         end
 
         function Tres_ottimale = trovaPeriodoRestrizione(obj, Dcons)
