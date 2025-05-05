@@ -138,26 +138,19 @@ classdef Scenario
             sc = Scenario("Trasporto ord.",[0.1,1.0,999],[0.5,3,20.5],m,0);
         end
         function sc = Ordinario_Bambino_2_5(m)
-            % =================================================================
-            %  ORDINARIO BAMBINO 2–5 ANNI (dopo i 32 gg)
-            %
-            %  - 2 h @ 0.1 m  (abbracci brevi)
-            %  - 6 h @ 2 m    (gioco in stanza)
-            %  - 16 h lontano (>5 m)
-            % =================================================================
             sc = Scenario("Bambino ord. 2-5", [0.1, 2.0, 999], [2, 6, 16], m, 0);
         end
-        function sc = Ordinario_Bambino_0_2(m)
-            % =================================================================
-            %  ORDINARIO BAMBINO < 2 ANNI (dopo i 39 gg)
-            %
-            %  - 1.5 h @ 0.1 m  (abbracci / poppata)
-            %  - 4.0 h @ 0.3 m  (accudimento ravvicinato)
-            %  - 6.0 h @ 1 m    (gioco sul tappeto)
-            %  - 12 h @ 2 m     (passeggino/culla a distanza)
-            % =================================================================
-            sc = Scenario("Bambino ord. <2", [0.1, 0.3, 1.0, 2.0], [1.5, 4, 6, 12], m, 0);
-        end
+         function sc = Ordinario_Bambino_02(m)
+        % =================================================================
+        %  ORDINARIO BAMBINO < 2 ANNI (dopo i 39 gg)
+        %
+        %  - 1.5 h @ 0.1 m  (abbracci / poppata)
+        %  - 4.0 h @ 0.3 m  (accudimento ravvicinato)
+        %  - 6.0 h @ 1 m    (gioco sul tappeto)
+        %  - 12 h @ 2 m     (passeggino/culla a distanza)
+        % =================================================================
+        sc = Scenario("Bambino ord. <2", [0.1, 0.3, 1.0, 2.0], [1.5, 4, 6, 12], m, 0);
+    end
 
         function sc = Ordinario_Incinta(m)
             % Ordinario donna incinta: 1 m contatto limitato
@@ -165,29 +158,8 @@ classdef Scenario
         end
 
         function sc = Ordinario_Colleghi(m)
-            % =================================================================
-            %  ORDINARIO COLLEGHI (dopo il congedo lavorativo)
-            %
-            %  Obiettivo clinico
-            %  -----------------
-            %  • Scenario di esposizione per i colleghi al rientro in ufficio.
-            %  • Con R_Tdis = 30 µSv/h e fr/λ dell’ipertiroidismo, volevamo
-            %    ottenere T_res ≈ 22 gg (assenza lavorativa) e vincolo 0.3 mSv.
-            %
-            %  Logica di tuning
-            %  ----------------
-            %  • Nessuna fase restrittiva (il paziente resta a casa fino al 22° gg).
-            %  • Fattore ordinario Fo originale (= 8 h @1 m) era troppo alto.
-            %  • Abbiamo applicato un fattore *0.9093* sui tempi per far sì che
-            %    Fo ≈ 0.303 e la dose a 22 gg sia esattamente 0.3 mSv.
-            %
-            %  Tempi/distanze quotidiani
-            %  ------------------------
-            %  • 7.27 h/gg   @ 1 m   (scrivania adiacente, riunioni)
-            %  • 16.0 h/gg  @ 999 m  (fuori dall’ufficio / notte)
-            %
-            % =================================================================
-            sc = Scenario("Colleghi ord.", [1.0, 999], [8, 16] * 0.9093, m, 0);
+            % Ordinario colleghi: 1 m su poco tempo
+            sc = Scenario("Colleghi ord.",[1.0,999],[8,16],m,0);
         end
     end
 end
