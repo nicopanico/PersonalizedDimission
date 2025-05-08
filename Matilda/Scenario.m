@@ -174,13 +174,6 @@ classdef Scenario
             %  • Con R_Tdis = 30 µSv/h e fr/λ dell’ipertiroidismo, volevamo
             %    ottenere T_res ≈ 22 gg (assenza lavorativa) e vincolo 0.3 mSv.
             %
-            %  Logica di tuning
-            %  ----------------
-            %  • Nessuna fase restrittiva (il paziente resta a casa fino al 22° gg).
-            %  • Fattore ordinario Fo originale (= 8 h @1 m) era troppo alto.
-            %  • Abbiamo applicato un fattore *0.9093* sui tempi per far sì che
-            %    Fo ≈ 0.303 e la dose a 22 gg sia esattamente 0.3 mSv.
-            %
             %  Tempi/distanze quotidiani
             %  ------------------------
             %  • 7.27 h/gg   @ 1 m   (scrivania adiacente, riunioni)
@@ -188,6 +181,18 @@ classdef Scenario
             %
             % =================================================================
             sc = Scenario("Colleghi ord.", [1.0, 999], [8, 16] * 0.9093, m, 0);
+        end
+        function sc = Ordinario_Colleghi_2m(m)
+            % ================================================================
+            %  ORDINARIO COLLEGHI – variante lavoro sempre ≥ 2 m
+            %
+            %  • Ipotesi: in ufficio il paziente può garantire > 2 m di distanza
+            %    per TUTTA la giornata lavorativa (8 h).  Il resto del tempo
+            %    è a distanza “lontano” (casa, notte).
+            %  • Vincolo pubblico 0.3 mSv – con 2 m il F_geo è 0.26,
+            %    quindi Fo = (8/24)*0.26 ≈ 0.087.
+            % ================================================================
+            sc = Scenario("Colleghi ord. ≥2 m", [2.0, 999], [8, 16], m, 0);
         end
     end
 end

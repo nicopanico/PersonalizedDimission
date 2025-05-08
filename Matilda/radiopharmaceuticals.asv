@@ -2,7 +2,7 @@
     {
         "name": "I-131 Carcinoma Tiroideo",
         "fr":         [0.70, 0.30],
-        "lambda_eff": [2.16, 0.0866]  
+        "lambda_eff": [2.16, 0.0866]   // λ = ln2 / T½  →  T½_fast ≈ 0.32 d, T½_slow ≈ 8.0 d
     },
   {
     "name": "I-131 Ipotiroidismo",

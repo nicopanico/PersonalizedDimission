@@ -115,6 +115,14 @@ classdef DoseCalculator
             plot(Tvec,dose_tot,'b-',Tvec,dose_r,'g--',Tvec,dose_o,'m-.','LineWidth',1.5); hold on
             yline(obj.scenarioRestrizione.DoseConstraint,'r--','Limite dose');
             plot(Tres_opt,obj.calcolaDoseTotale(Tres_opt),'ko','MarkerFaceColor','k');
+            plot(Tres_opt, dose_opt,'ko','MarkerFaceColor','k');
+
+% ---------- etichetta numerica ----------
+txt = sprintf('  T_{res}^{opt} = %.2f gg', Tres_opt);
+text(Tres_opt, dose_opt, txt, ...
+     'VerticalAlignment','bottom', ...
+     'FontSize', 10, ...
+     'FontWeight','bold');
             title(['Dose per ',selectedRF,' – ',obj.scenarioRestrizione.nome]);
             xlabel('T_{res} [giorni]'); ylabel('Dose [mSv]'); grid on
             legend('Tot','Restr.','Ordin.','Limite','T_{res}^{opt}');
