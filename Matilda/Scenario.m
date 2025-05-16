@@ -44,7 +44,7 @@ classdef Scenario
             %    divano, stesso ambiente).
             %  • In `DoseApp` compare quando l’utente spunta “Partner”.
             % =================================================================
-            sc = Scenario("Partner", [1.0], [1.0], m, 3.0);  % 1 h @ 1 m
+            sc = Scenario("Partner", [1.0], [2.0], m, 3.0);  % 1 h @ 1 m
         end
         function sc = NessunaRestr(m)
             % =================================================================
@@ -67,7 +67,7 @@ classdef Scenario
         function sc = TrasportoPubblico(m)
             % Travel in public transport
             %  0.5 h @ 0.1 m, constraint = 0.3 mSv
-            sc = Scenario("Trasporto restr.",[0.1],[0.5],m,0.3);
+            sc = Scenario("Trasporto restr.",[0.5],[0.5],m,0.3);
         end
 
         function sc = Bambino_0_2(m)
@@ -98,15 +98,14 @@ classdef Scenario
         end
 
         function sc = Bambino_5_11(m)
-            % Contact with child 5-11 y
-            %  2 h @ 0.1 m, 4 h @ 1 m, constraint = 1 mSv
-            sc = Scenario("Bambino 5-11 restr.",[0.1,1.0],[2,4],m,1.0);
+            % Primo mese: max 2 h/gg a 1 m (compiti, pasti)
+            sc = Scenario("Bambino 5-11 restr.", [1.0], [2.5], m, 1.0);
         end
 
         function sc = DonnaIncinta(m)
             % Contact with pregnant woman
             %  6 h @ 1 m, constraint = 1 mSv
-            sc = Scenario("Incinta restr.",[1.0],[6],m,1.0);
+            sc = Scenario("Incinta restr.",[1.0],[2],m,1.0);
         end
 
         function sc = Colleghi(m)
@@ -128,14 +127,13 @@ classdef Scenario
             %  – 5.6 h/gg a 30 cm (divano, abbracci saltuari)
             %  – 4.2 h/gg a 1 m  (stessa stanza)
             %  – 7.0 h/gg a distanza ≫ 2 m (lontano / lavoro)
-            %  Fattore 0.7 sui tempi originali per centrare il vincolo.
             % =================================================================
-            sc = Scenario("Partner ord.", [0.3, 1.0, 999], [8, 6, 10] * 0.7, m, 0);
+            sc = Scenario("Partner ord.", [0.3, 1.0, 2], [5, 3.5, 9.5] , m, 0);
         end
 
         function sc = Ordinario_Trasporto(m)
             % Ordinario trasporto: 0.5 h @ 0.1 m, 3 h @ 1 m, resto lontano
-            sc = Scenario("Trasporto ord.",[0.1,1.0,999],[0.5,3,20.5],m,0);
+            sc = Scenario("Trasporto ord.",[0.3,1,999],[1,2,20.5],m,0);
         end
         function sc = Ordinario_Bambino_2_5(m)
             % =================================================================
@@ -157,6 +155,12 @@ classdef Scenario
             %  - 12 h @ 2 m     (passeggino/culla a distanza)
             % =================================================================
             sc = Scenario("Bambino ord. <2", [0.1, 0.3, 1.0, 2.0], [1.5, 4, 6, 12], m, 0);
+        end
+
+        function sc = Ordinario_Bambino_5_11(m)
+            distanze = [0.5, 1.0, 2.0, 999];
+            tempi    = [2.5, 3.0, 6.0, 12.0];  % h/gg
+            sc = Scenario("Bambino ord. 5-11", distanze, tempi, m, 0);
         end
 
         function sc = Ordinario_Incinta(m)

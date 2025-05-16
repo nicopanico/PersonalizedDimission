@@ -33,6 +33,7 @@ classdef DoseApp < matlab.apps.AppBase
         RisultatiPanel    matlab.ui.container.Panel
         RisultatiTextArea matlab.ui.control.TextArea
         PlotDoseButton    matlab.ui.control.Button
+        WorkDistDrop      matlab.ui.control.DropDown
     end
 
     properties (Access = private)
@@ -116,15 +117,18 @@ classdef DoseApp < matlab.apps.AppBase
     end
 
     % ---------- scelta ordinario dinamica ----------
-    function ord = selectOrdScenario(app,restrName)
-        if strcmp(restrName,'Colleghi') && app.DueMetriRadio.Value
-            ord = app.pairMapOrd.Colleghi2m(app.modello);
+    function ord = selectOrdScenario(app, restrName)
+        if strcmp(restrName,'Colleghi')
+            if strcmp(app.WorkDistDrop.Value,'Sempre ≥ 2 m')
+                ord = app.pairMapOrd.Colleghi2m(app.modello);
+            else
+                ord = app.pairMapOrd.Colleghi(app.modello);
+            end
         else
             ord = app.pairMapOrd.(restrName)(app.modello);
         end
     end
-end
-
+    end
     % ========================= COSTRUTTORE =========================
     methods (Access = public)
         function app = DoseApp
@@ -148,7 +152,7 @@ end
                 'Trasporto', @Scenario.Ordinario_Trasporto, ...
                 'Bambino02', @Scenario.Ordinario_Bambino_0_2, ...
                 'Bambino25', @Scenario.Ordinario_Bambino_2_5, ...
-                'Bambino511',@Scenario.Ordinario_Bambino, ...
+                'Bambino511',@Scenario.Ordinario_Bambino_5_11, ...
                 'Incinta',   @Scenario.Ordinario_Incinta, ...
                 'Colleghi',  @Scenario.Ordinario_Colleghi );
 
@@ -223,13 +227,18 @@ end
             app.IncintaCheckBox    = uicheckbox(glSc,'Text','Donna incinta');
             app.ColleghiCheckBox   = uicheckbox(glSc,'Text','Colleghi lavoro');
 
-            % --- gruppo radio per distanza lavoro ---
-            app.WorkDistGroup = uibuttongroup(glSc,'Title','Distanza al lavoro',...
+            % --- gruppo per distanza al lavoro --------------------
+            app.WorkDistGroup = uibuttongroup(glSc, ...
+                'Title','Distanza al lavoro', ...
                 'Visible','off');
-            app.StandardRadio = uiradiobutton(app.WorkDistGroup,...
-                'Text','Standard (≈1 m)','Position',[10 5 140 22],'Value',true);
-            app.DueMetriRadio = uiradiobutton(app.WorkDistGroup,...
-                'Text','Sempre ≥2 m','Position',[10 30 140 22]);
+            app.WorkDistGroup.Layout.Row = 8;
+            app.WorkDistGroup.Layout.Column = 1;
+
+            % sostituisci ENTRO il gruppo:
+            app.WorkDistDrop = uidropdown(app.WorkDistGroup, ...
+                'Items', {'Standard (≈1 m)', 'Sempre ≥ 2 m'}, ...
+                'Value', 'Standard (≈1 m)', ...
+                'Position',[10 10 160 22]);     % x y w h
 
             % callback visibilità
             app.ColleghiCheckBox.ValueChangedFcn = ...
