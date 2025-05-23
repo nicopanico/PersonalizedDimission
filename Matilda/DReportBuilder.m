@@ -1,31 +1,16 @@
 classdef DReportBuilder < handle
-    % DReportBuilder – produce un PDF di istruzioni di dimissione
-    %   usando il DOM API (integrato in MATLAB).
-    %
-    %  ▶ Esempio uso
-    %     pat = struct('Name',"Mario Rossi",'ID',"RSSMRA80A01H501Z");
-    %     doc = struct('Name',"Dr.ssa Bianchi",'Unit',"Medicina Nucleare");
-    %     rep = DReportBuilder(pat,doc,"I-131 (740 MBq)",30);
-    %
-    %     rep.addScenario("Partner",15, ...
-    %        "Letti separati, contatto <30 cm ≤1 h/giorno");
-    %     rep.addScenario("Colleghi",6, ...
-    %        "Rientro al lavoro dopo 6 gg, distanza ≥2 m");
-    %
-    %     pdfFile = rep.build("istruzioni_dimissione.pdf");
-    %     open(pdfFile)
-    %
+    % DReportBuilder – PDF istruzioni dimissione, 40 gg landscape (R2021b)
 
     properties
-        Patient        struct          % .Name  .ID   (string)
-        Clinician      struct          % .Name  .Unit (string)
-        RadioPharm     string
-        DischargeRate  double          % µSv/h @1 m
-        Scenarios      struct = struct('Name',{},'Tres',{},'Instr',{})
+        Patient       struct
+        Clinician     struct
+        RadioPharm    string
+        DischargeRate double
+        Scenarios     struct = struct('Name',{},'Tres',{},'Instr',{})
     end
 
     methods
-        % ----------------------------------------------------------- %
+        %% -------- constructor --------------------------------------
         function obj = DReportBuilder(patient, clinician, radioPharm, rate)
             obj.Patient       = patient;
             obj.Clinician     = clinician;
@@ -33,104 +18,158 @@ classdef DReportBuilder < handle
             obj.DischargeRate = rate;
         end
 
-        % ----------------------------------------------------------- %
+        %% -------- aggiunge scenario --------------------------------
         function addScenario(obj,name,Tres,instr)
-            s = struct('Name',string(name), ...
-                       'Tres',Tres, ...
-                       'Instr',string(instr));
-            obj.Scenarios(end+1) = s;
+            obj.Scenarios(end+1) = struct( ...
+                "Name",string(name),"Tres",Tres,"Instr",string(instr));
         end
 
-        % ----------------------------------------------------------- %
-        function filePDF = build(obj, fileOut)
-            import mlreportgen.dom.*          % se vuoi usare Paragraph, Table, ecc.
+        %% -------- build PDF ----------------------------------------
+        function filePDF = build(obj,fileOut)
+            import mlreportgen.dom.*
 
-            d = mlreportgen.dom.Document(fileOut,'pdf');   % <-- nome qualificato
+            d  = mlreportgen.dom.Document(fileOut,"pdf");
+
+            % — A4 landscape, margini --------------------------------
             pl = d.CurrentPageLayout;
-            pl.PageSize = 'A4';     % oppure 'Letter', 'A5', ecc.
+            pl.PageSize    = "A4";
+            pl.Orientation = "landscape";
+            pl.PageMargins.Top    = "25mm";
+            pl.PageMargins.Bottom = "25mm";
+            pl.PageMargins.Left   = "15mm";
+            pl.PageMargins.Right  = "15mm";
 
-            %% --- TITOLI ------------------------------------------------
-            append(d, Heading1('FOGLIO ISTRUZIONI AL PAZIENTE'));
+            %% ---- intestazione --------------------------------------
+            h1 = Heading1("FOGLIO ISTRUZIONI AL PAZIENTE");
+            h1.Style = {FontFamily("Arial")}; append(d,h1);
 
-            info = sprintf(['Paziente: %s    ID: %s\n' ...
-                            'Radiofarmaco: %s\n' ...
+            info = sprintf(['Paziente: %s    ID: %s\n'     ...
+                            'Radiofarmaco: %s\n'           ...
                             'Rateo alla dimissione: %.0f µSv/h a 1 m\n' ...
                             'Data: %s'], ...
-                            obj.Patient.Name, obj.Patient.ID, ...
-                            obj.RadioPharm, obj.DischargeRate, ...
-                            datestr(now,'dd-mmm-yyyy'));
-            pInfo = Paragraph(info); pInfo.Style = {FontSize('10pt')};
+                            obj.Patient.Name,obj.Patient.ID, ...
+                            obj.RadioPharm,obj.DischargeRate, ...
+                            datestr(now,"dd-mmm-yyyy"));
+            pInfo = Paragraph(info);
+            pInfo.Style = {FontFamily("Arial"),FontSize("10pt")};
             append(d,pInfo);
 
-            %% --- TABELLA TESTUALE RESTRIZIONI -------------------------
+            %% ---- tabella restrizioni -------------------------------
             if ~isempty(obj.Scenarios)
-                append(d, Heading3('Restrizioni raccomandate'));
-                tbl = Table({'Scenario','Giorni','Indicazioni pratiche'});
-                tbl.Border = 'solid'; tbl.ColSep = 'solid'; tbl.RowSep = 'solid';
-                for s = obj.Scenarios
-                    r = TableRow({s.Name, sprintf('%.0f',s.Tres), s.Instr});
+                h3 = Heading3("Restrizioni raccomandate");
+                h3.Style = {FontFamily("Arial")}; append(d,h3);
+
+                tbl = Table({"Scenario","Giorni","Indicazioni pratiche"});
+                tbl.Border = "solid"; tbl.RowSep="solid"; tbl.ColSep="solid";
+                tbl.BorderWidth = "0.3pt";
+                tbl.Style = {FontFamily("Arial"),FontSize("10pt")};
+
+                for k = 1:numel(obj.Scenarios)
+                    s = obj.Scenarios(k);
+                    r = TableRow();
+                    if mod(k,2)==0, r.Style = {BackgroundColor("#f7f7f7")}; end
+
+                    % colonna 1
+                    e = TableEntry(s.Name);
+                    e.Style = {Border("solid"),BorderWidth("0.3pt")};
+                    append(r,e);
+
+                    % colonna 2 (giorni)
+                    e = TableEntry(sprintf("%.0f",s.Tres));
+                    e.Style = {HAlign("center"),Border("solid"),BorderWidth("0.3pt")};
+                    append(r,e);
+
+                    % colonna 3
+                    e = TableEntry(s.Instr);
+                    e.Style = {Border("solid"),BorderWidth("0.3pt")};
+                    append(r,e);
+
                     append(tbl,r);
                 end
                 append(d,tbl);
             end
 
-            %% --- MATRICE SEMAFORO (scenario × 30 giorni) -------------
+            %% ---- matrice semaforo 40 gg ----------------------------
             if ~isempty(obj.Scenarios)
-                append(d, Heading3('Calendario restrizioni (30 giorni)'));
+                h3 = Heading3("Calendario restrizioni (40 giorni)");
+                h3.Style = {FontFamily("Arial")}; append(d,h3);
 
-                mat = Table(); mat.Border = 'solid';
-                header = TableRow();
-                append(header, TableEntry(' '));              % angolo vuoto
-                for dDay = 1:30
-                    e = TableEntry(sprintf('%d',dDay));
-                    e.Style = {HAlign('center'),Width('5mm')};
-                    append(header,e);
+                mat = Table();
+                mat.Border = "solid";
+                mat.RowSep = "solid";
+                mat.ColSep = "solid";
+                mat.BorderWidth = "0.3pt";
+                mat.BorderColor = "#888888";
+                mat.Style = {FontFamily("Arial")};
+
+                % header 1–40
+                hdr = TableRow();
+                append(hdr,TableEntry(" "));
+                for dd = 1:40
+                    e = TableEntry(sprintf("%d",dd));
+                    e.Style = {HAlign("center"),Width("5mm"),FontSize("7pt"), ...
+                               Border("solid"),BorderWidth("0.3pt"),BorderColor("#888888")};
+                    append(hdr,e);
                 end
-                append(mat,header);
+                append(mat,hdr);
 
+                % righe scenario
                 for s = obj.Scenarios
-                    row = TableRow();
-                    % prima colonna = nome scenario
-                    append(row, TableEntry(s.Name));
-                    for dDay = 1:30
-                        cell = TableEntry();
-                        cell.Style = {Width('5mm'),Height('5mm')};
-                        if dDay <= s.Tres
-                            col = 'red';
-                        elseif dDay <= s.Tres+2
-                            col = 'gold';
+                    r = TableRow();
+
+                    eName = TableEntry(s.Name);
+                    eName.Style = {Width("30mm"),FontSize("8pt"), ...
+                                   Border("solid"),BorderWidth("0.3pt")};
+                    append(r,eName);
+
+                    for dd = 1:40
+                        cell = TableEntry(Paragraph(char(160))); % NB-space
+                        cell.Style = {Width("5mm"),Height("5mm"), ...
+                                      Border("solid"),BorderWidth("0.3pt"),BorderColor("#888888")};
+
+                        if dd <= s.Tres
+                            cell.Style{end+1} = BackgroundColor("#ff0000");   % rosso
+                        elseif dd <= s.Tres+2
+                            cell.Style{end+1} = BackgroundColor("#ffd700");   % oro
                         else
-                            col = 'limegreen';
+                            cell.Style{end+1} = BackgroundColor("#32cd32");   % verde
                         end
-                        cell.Style{end+1} = BackgroundColor(col);
-                        append(row,cell);
+                        append(r,cell);
                     end
-                    append(mat,row);
+                    append(mat,r);
                 end
                 append(d,mat);
 
-                % legenda mini
-                leg = Table({'■ Fase restrittiva','■ Fase ordinaria','■ Nessuna restr.'});
-                leg.Style = {FontSize('8pt'),OuterMargin('4pt','0pt','0pt','0pt')};
-                leg.TableEntriesStyle = {BackgroundColor('white')};
-                % colori legenda
-                leg.TableEntries(1).Children(1).Style = {FontColor('red')};
-                leg.TableEntries(2).Children(1).Style = {FontColor('gold')};
-                leg.TableEntries(3).Children(1).Style = {FontColor('limegreen')};
-                append(d,leg);
+                %% ---- legenda ---------------------------------------
+                leg = Table();
+                leg.Style = {FontFamily("Arial"),FontSize("8pt"), ...
+                             OuterMargin("4pt","0pt","0pt","0pt")};
+                lr = TableRow();
+
+                mk = @(txt,colHex) ...
+                    ( e = TableEntry(Paragraph(txt)); ...
+                      e.Style = {BackgroundColor("white"),Color(colHex)}; ...
+                      lr.appendChild(e) );
+
+                mk("■ Fase restrittiva","#ff0000");
+                mk("■ Fase ordinaria","#ffd700");
+                mk("■ Nessuna restr.","#32cd32");
+
+                append(leg,lr); append(d,leg);
             end
 
-            %% --- FIRMA -----------------------------------------------
-            append(d, Paragraph(' '));
-            pSign = Paragraph(sprintf('Medico: %s  (%s)', ...
-                       obj.Clinician.Name, obj.Clinician.Unit));
-            pSign.Style = {FontSize('10pt')};
+            %% ---- firma --------------------------------------------
+            append(d,Paragraph(" "));
+            pSign = Paragraph(sprintf("Medico: %s  (%s)", ...
+                            obj.Clinician.Name,obj.Clinician.Unit));
+            pSign.Style = {FontFamily("Arial"),FontSize("10pt")};
             append(d,pSign);
-            append(d, Paragraph('Firma: ______________________________'));
+            append(d,Paragraph("Firma: ______________________________"));
 
-            %% --- GENERA PDF ------------------------------------------
+            %% ---- salva -------------------------------------------
             close(d);
             filePDF = d.OutputPath;
         end
     end
 end
+
