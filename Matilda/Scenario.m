@@ -71,30 +71,19 @@ classdef Scenario
         end
 
         function sc = Bambino_0_2(m)
-            % =================================================================
-            %  SCENARIO: BAMBINO < 2 ANNI (fase restrittiva)
-            %
-            %  • Periodo di riferimento: 39 giorni (Buonamici, Tab. 3).
-            %  • Vincolo pediatrico: 1 mSv.
-            %  • Contatto “in braccio / allattamento” limitato a 6 min al giorno
-            %    a 10 cm (0.1 m).  Il resto della giornata è gestito dallo
-            %    scenario ordinario (vedi sotto).
-            % =================================================================
-            sc = Scenario("Limite contatto bambino <2", [0.1], [0.10], m, 1.0);
+            % 1.5 h/g a 1 m  +  2 h/g a 2 m   ⇒ Tres ≈ 39 gg
+            sc = Scenario("Bambino <2 restr.", ...
+                [1.0, 2.0], ...
+                [1.5, 2.0], ...   % ore/giorno
+                m, 1.0);
         end
 
         function sc = Bambino_2_5(m)
-            % =================================================================
-            %  SCENARIO: BAMBINO 2–5 ANNI (fase restrittiva)
-            %
-            %  • T_res atteso: 32 giorni (Buonamici).
-            %  • Vincolo: 1 mSv.
-            %  • Si prevedono:
-            %      – 10 min/gg a 0.3 m (bimbo in grembo o sulle ginocchia)
-            %      – 1 h/gg a 1 m (gioco fianco a fianco)
-            % =================================================================
-            sc = Scenario("Limite contatto bambino 2-5", ...
-                [0.3, 1.0], [0.16, 1.0], m, 1.0);
+            % 1.5 h/g a 1 m  +  1.5 h/g a 2 m   ⇒ Tres ≈ 32 gg
+            sc = Scenario("Bambino 2-5 restr.", ...
+                [1.0, 2.0], ...
+                [1.5, 1.5], ...   % ore/giorno
+                m, 1.0);
         end
 
         function sc = Bambino_5_11(m)

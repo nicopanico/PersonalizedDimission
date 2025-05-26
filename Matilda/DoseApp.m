@@ -15,6 +15,9 @@ classdef DoseApp < matlab.apps.AppBase
         RadiofarmacoPanel matlab.ui.container.Panel
         RadiofarmacoDropDown matlab.ui.control.DropDown
         CalcolaDoseButton matlab.ui.control.Button
+        PatientLabel           matlab.ui.control.Label      % <– nuovo
+        PatientNameField       matlab.ui.control.EditField  % <– nuovo
+        ReportButton           matlab.ui.control.Button     % <– nuovo
 
         % --- Col. 2 : scenari
         ScenariPanel      matlab.ui.container.Panel
@@ -44,6 +47,76 @@ classdef DoseApp < matlab.apps.AppBase
 
     % ========================= CALLBACKS =========================
     methods (Access = private)
+        % ---------- genera il foglio informativo PDF -----------------------------
+        function generaPDF(app)
+            import mlreportgen.dom.*
+
+            % ---- dati base -------------------------------------------------------
+            pazienteNome = strtrim(app.PatientNameField.Value);
+            if isempty(pazienteNome)
+                uialert(app.UIFigure,'Inserisci il nome del paziente','Nome mancante');
+                return;
+            end
+            paziente  = struct('Name',pazienteNome);
+            clinico   = struct('Name',"",'Unit',"");      % non stampiamo
+            rf        = app.RadiofarmacoDropDown.Value;
+            rateo     = app.R_TdisField.Value;
+
+            rep = DReportBuilder(paziente,clinico,rf,rateo);
+
+            % ---- scenari selezionati --------------------------------------------
+            names = app.getAllSelected();
+            if isempty(names)
+                uialert(app.UIFigure,'Seleziona almeno uno scenario','Nessuno scenario');
+                return;
+            end
+
+            Tdis  = app.TDischargeField.Value;
+            R_Tdis = rateo;
+            rph   = loadRadiopharmaceutical(rf,'radiopharmaceuticals.json');
+            fk0   = Farmacocinetica(rph.fr,rph.lambda_eff).aggiornaFrazioni(Tdis);
+
+            for k = 1:numel(names)
+                restr = app.pairMap.(names{k})(app.modello);
+                ord   = app.selectOrdScenario(names{k});
+                dc    = DoseCalculator(restr,ord,fk0,R_Tdis);
+
+                Tres  = dc.trovaPeriodoRestrizione(restr.DoseConstraint);
+                descr = restr2human(restr.nome);      % helper testuale
+
+                rep.addScenario(restr.nome, Tres, descr);
+            end
+
+            % ---- scegli file di salvataggio -------------------------------------
+            [file,path] = uiputfile({'*.pdf','PDF file'},'Salva istruzioni come');
+            if isequal(file,0), return; end        % utente ha annullato
+
+            pdfPath = rep.build(fullfile(path,file));
+            winopen(pdfPath);     % su mac/linux usa system call equivalente
+        end
+
+        % ---------- helper: nome scenario → descrizione pratica ------------------
+        function txt = restr2human(~,nomeScen)
+            switch erase(lower(nomeScen)," restr.")   % rimuovo eventuale "restr."
+                case "partner"
+                    txt = "Letti separati, contatto ≤1 h/g a ~1 m";
+                case "bambino <2"    % stringa che hai usato in Scenario
+                    txt = "≤1.5 h/g a 1 m, ≤2 h/g a 2 m";
+                case "bambino 2-5"
+                    txt = "≤1.5 h/g a 1 m, ≤1.5 h/g a 2 m";
+                case "bambino 5-11"
+                    txt = "≤2 h/g a 1 m, gioco a 2 m";
+                case "colleghi"
+                    txt = "Rientro al lavoro a distanza ≥1 m (o ≥2 m se selezionato)";
+                case "trasporto"
+                    txt = "Viaggio max 30 min su mezzi pubblici per i primi 2 gg";
+                case "incinta"
+                    txt = "Mantenere ≥1 m per 6 h/g, niente contatto ravvicinato";
+                otherwise
+                    txt = "";
+            end
+        end
+
     
     function PlotDoseButtonPushed(app)
         % --- parametri clinici
@@ -173,31 +246,47 @@ classdef DoseApp < matlab.apps.AppBase
             app.GridLayout = uigridlayout(app.UIFigure,[1,3]);
             app.GridLayout.ColumnWidth = {'fit','1x','1.5x'};
 
-            %% Colonna 1 - Parametri Clinici
-            app.ParametriPanel = uipanel(app.GridLayout, 'Title','Parametri Clinici');
+            %% Colonna 1 – Parametri clinici
+            app.ParametriPanel = uipanel(app.GridLayout,'Title','Parametri Clinici');
             app.ParametriPanel.Layout.Column = 1;
 
-            gl1 = uigridlayout(app.ParametriPanel, [5,2]);
-            gl1.RowHeight = repmat({'fit'},1,5);
+            gl1 = uigridlayout(app.ParametriPanel,[6,2]);   %  <-- era [5,2]
+            gl1.RowHeight   = repmat({'fit'},1,6);
             gl1.ColumnWidth = {'fit','1x'};
 
-            app.TDischargeLabel = uilabel(gl1, 'Text','T_{discharge} (giorni)');
-            app.TDischargeLabel.Layout.Row = 1; app.TDischargeLabel.Layout.Column = 1;
-            app.TDischargeField = uieditfield(gl1, 'numeric', 'Value', 1);
-            app.TDischargeField.Layout.Row = 1; app.TDischargeField.Layout.Column = 2;
+            % ---------- riga 1 : Paziente -------------------------------------------
+            app.PatientLabel = uilabel(gl1,'Text','Paziente');
+            app.PatientLabel.Layout.Row = 1;  app.PatientLabel.Layout.Column = 1;
 
-            app.RTdisLabel = uilabel(gl1, 'Text','R_{Tdis} (µSv/h)');
-            app.RTdisLabel.Layout.Row = 2; app.RTdisLabel.Layout.Column = 1;
-            app.R_TdisField = uieditfield(gl1, 'numeric', 'Value', 25);
-            app.R_TdisField.Layout.Row = 2; app.R_TdisField.Layout.Column = 2;
+            app.PatientNameField = uieditfield(gl1,'text','Placeholder','Mario Rossi');
+            app.PatientNameField.Layout.Row = 1;  app.PatientNameField.Layout.Column = 2;
 
-            app.AttivitaLabel = uilabel(gl1, 'Text','Attività (MBq)');
-            app.AttivitaLabel.Layout.Row = 3; app.AttivitaLabel.Layout.Column = 1;
-            app.AttivitaField = uieditfield(gl1, 'numeric', 'Value', 740);
-            app.AttivitaField.Layout.Row = 3; app.AttivitaField.Layout.Column = 2;
+            % ---------- riga 2 : Tdis -----------------------------------------------
+            app.TDischargeLabel = uilabel(gl1,'Text','T_{discharge} (giorni)');
+            app.TDischargeLabel.Layout.Row = 2;  app.TDischargeLabel.Layout.Column = 1;
 
-            app.RadiofarmacoPanel = uipanel(gl1, 'Title','Radiofarmaco');
-            app.RadiofarmacoPanel.Layout.Row = [4 5]; app.RadiofarmacoPanel.Layout.Column = [1 2];
+            app.TDischargeField = uieditfield(gl1,'numeric','Value',1);
+            app.TDischargeField.Layout.Row = 2;  app.TDischargeField.Layout.Column = 2;
+
+            % ---------- riga 3 : R_Tdis ---------------------------------------------
+            app.RTdisLabel = uilabel(gl1,'Text','R_{Tdis} (µSv/h)');
+            app.RTdisLabel.Layout.Row = 3;  app.RTdisLabel.Layout.Column = 1;
+
+            app.R_TdisField = uieditfield(gl1,'numeric','Value',25);
+            app.R_TdisField.Layout.Row = 3;  app.R_TdisField.Layout.Column = 2;
+
+            % ---------- riga 4 : Attività -------------------------------------------
+            app.AttivitaLabel = uilabel(gl1,'Text','Attività (MBq)');
+            app.AttivitaLabel.Layout.Row = 4;  app.AttivitaLabel.Layout.Column = 1;
+
+            app.AttivitaField = uieditfield(gl1,'numeric','Value',740);
+            app.AttivitaField.Layout.Row = 4;  app.AttivitaField.Layout.Column = 2;
+
+            % ---------- righe 5-6 : pannello Radiofarmaco + bottoni ------------------
+            app.RadiofarmacoPanel = uipanel(gl1,'Title','Radiofarmaco');
+            app.RadiofarmacoPanel.Layout.Row    = [5 6];   %  <-- +1
+            app.RadiofarmacoPanel.Layout.Column = [1 2];
+
 
             app.RadiofarmacoDropDown = uidropdown(app.RadiofarmacoPanel, ...
                 'Items', {'I-131 Carcinoma Tiroideo', 'I-131 Ipotiroidismo', ...
@@ -213,6 +302,11 @@ classdef DoseApp < matlab.apps.AppBase
                 'Text','Grafico Dose', ...
                 'Position',[140 5 120 28], ...
                 'ButtonPushedFcn', @(btn,event) PlotDoseButtonPushed(app));
+
+            app.ReportButton = uibutton(app.RadiofarmacoPanel,'push', ...
+                'Text','Genera PDF', ...
+                'Position',[270 5 120 28], ...
+                'ButtonPushedFcn',@(btn,ev) generaPDF(app));
 
             %% Colonna 2 – Scenari di esposizione
             app.ScenariPanel = uipanel(app.GridLayout,'Title','Scenari di esposizione');
