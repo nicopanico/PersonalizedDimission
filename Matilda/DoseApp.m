@@ -82,7 +82,7 @@ classdef DoseApp < matlab.apps.AppBase
                 dc    = DoseCalculator(restr,ord,fk0,R_Tdis);
 
                 Tres  = dc.trovaPeriodoRestrizione(restr.DoseConstraint);
-                descr = restr2human(restr.nome);      % helper testuale
+                descr = app.restr2human(restr.nome);      % helper testuale
 
                 rep.addScenario(restr.nome, Tres, descr);
             end
@@ -305,7 +305,7 @@ classdef DoseApp < matlab.apps.AppBase
 
             app.ReportButton = uibutton(app.RadiofarmacoPanel,'push', ...
                 'Text','Genera PDF', ...
-                'Position',[270 5 120 28], ...
+                'Position',[10 -25 120 28], ...
                 'ButtonPushedFcn',@(btn,ev) generaPDF(app));
 
             %% Colonna 2 – Scenari di esposizione

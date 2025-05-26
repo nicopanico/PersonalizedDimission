@@ -44,14 +44,22 @@ classdef DReportBuilder < handle
             h1 = Heading1('FOGLIO ISTRUZIONI AL PAZIENTE');
             h1.Style = {FontFamily('Arial')};
             append(d,h1);
+            nome = obj.Patient.Name;
 
-            info = sprintf(['Paziente: %s    ID: %s\n'...
+            if isfield(obj.Patient,'ID') && ~isempty(obj.Patient.ID)
+                idTxt = ['    ID: ', obj.Patient.ID];
+            else
+                idTxt = '';                   % nessun ID -> niente testo
+            end
+
+            info = sprintf(['Paziente: %s%s\n' ...      % <-- usa idTxt
                 'Radiofarmaco: %s\n' ...
-                'Rateo alla dimissione: %.0f µSv/h a 1 m\n'...
+                'Rateo alla dimissione: %.0f µSv/h a 1 m\n' ...
                 'Data: %s'], ...
-                obj.Patient.Name,obj.Patient.ID, ...
-                obj.RadioPharm,obj.DischargeRate, ...
+                nome, idTxt, ...             % <—
+                obj.RadioPharm, obj.DischargeRate, ...
                 datestr(now,'dd-mmm-yyyy'));
+            
             pInfo = Paragraph(info);
             pInfo.Style = {FontFamily('Arial'),FontSize('10pt')};
             append(d,pInfo);
