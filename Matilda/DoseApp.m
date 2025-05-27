@@ -154,16 +154,27 @@ classdef DoseApp < matlab.apps.AppBase
         rph = loadRadiopharmaceutical(RF,'radiopharmaceuticals.json');
         fk0 = Farmacocinetica(rph.fr,rph.lambda_eff).aggiornaFrazioni(T_dis);
 
-        out = strings(numel(names),1);
+        out  = strings(numel(names)*2 ,1);   % *2 = riga vuota dopo ciascun risultato
+        idx  = 1;
+
         for k = 1:numel(names)
             restr = app.pairMap.(names{k})(app.modello);
             ord   = app.selectOrdScenario(names{k});
             dc    = DoseCalculator(restr,ord,fk0,R_Tdis);
             Tres  = dc.trovaPeriodoRestrizione(restr.DoseConstraint);
-            out(k)= sprintf('%s → T_res=%.1f gg, Dose7g=%.2f mSv',...
-                restr.nome,Tres,dc.calcolaDoseTotale(7));
+
+            out(idx) = sprintf('%-20s  T_res: %5.1f gg   (Dose7gg: %6.2f mSv)', ...
+                restr.nome, Tres, dc.calcolaDoseTotale(7));
+            idx = idx + 1;
+            out(idx) = "";                       % riga vuota
+            idx = idx + 1;
         end
-        app.RisultatiTextArea.Value = out;
+
+        % — impostazioni di visualizzazione ————————————————
+        app.RisultatiTextArea.FontName = 'Courier New';   % monospazio
+        app.RisultatiTextArea.FontSize = 15;              % un po5 più grande
+        app.RisultatiTextArea.Value    = out;
+
     end
 
     % ---------- helper per checkbox ----------
