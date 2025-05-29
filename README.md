@@ -26,3 +26,31 @@ Tramite un'interfaccia grafica (GUI) intuitiva, **DoseApp** permette agli operat
 In questo modo, **DoseApp** non solo rende più efficiente il lavoro del personale sanitario, ma contribuisce significativamente anche alla sicurezza del paziente e dei suoi conviventi, migliorando la comunicazione medico-paziente e garantendo la conformità alle normative vigenti in ambito di radioprotezione.
 
 Questa documentazione fornisce tutte le informazioni necessarie per l'installazione, l'utilizzo quotidiano, la manutenzione e l'eventuale personalizzazione del software. Sono incluse inoltre indicazioni tecniche dettagliate per eventuali aggiornamenti, modifiche agli scenari espositivi, gestione dei dati clinici, e modelli matematici e computazionali utilizzati.
+
+## Requisiti Software e Installazione
+
+Questa sezione descrive i requisiti software e la procedura passo-passo per installare ed eseguire correttamente **DoseApp**.
+
+---
+
+### 🚩 Requisiti Software Minimi
+
+Per utilizzare correttamente **DoseApp**, assicurarsi di disporre di:
+
+- **MATLAB versione R2021b** (o successive)
+  - Licenza valida per il MATLAB Report Generator toolbox, richiesto per la generazione automatica dei report in formato PDF.
+- Sistema operativo supportato da MATLAB (Windows, macOS, Linux).
+- Un editor di testo (opzionale, per la modifica dei file JSON di configurazione), ad esempio [Visual Studio Code](https://code.visualstudio.com/) o [Notepad++](https://notepad-plus-plus.org/).
+
+---
+
+### 📥 Procedura di Installazione
+
+Seguire attentamente questi passaggi per installare e avviare **DoseApp**:
+
+**1. Clonare o scaricare il repository**
+
+Scaricare il repository completo (file `.zip`) oppure clonare direttamente da terminale tramite Git:
+
+```bash
+git clone https://github.com/utente/DoseApp.git
