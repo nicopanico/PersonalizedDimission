@@ -53,4 +53,4 @@ Seguire attentamente questi passaggi per installare e avviare **DoseApp**:
 Scaricare il repository completo (file `.zip`) oppure clonare direttamente da terminale tramite Git:
 
 ```bash
-git clone https://github.com/utente/DoseApp.git
+git clone https://github.com/nicopanico/PersonalizedDimission.git
