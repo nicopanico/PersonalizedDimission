@@ -117,7 +117,7 @@ classdef Scenario
             %  – 4.2 h/gg a 1 m  (stessa stanza)
             %  – 7.0 h/gg a distanza ≫ 2 m (lontano / lavoro)
             % =================================================================
-            sc = Scenario("Partner ord.", [0.3, 1.0, 2], [5, 3.5, 9.5] , m, 0);
+            sc = Scenario("Partner ord.", [0.3, 1.0, 2], [6, 3.5, 9.5] , m, 0);
         end
 
         function sc = Ordinario_Trasporto(m)
