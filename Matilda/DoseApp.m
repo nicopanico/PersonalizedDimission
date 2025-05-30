@@ -82,6 +82,11 @@ classdef DoseApp < matlab.apps.AppBase
                 dc    = DoseCalculator(restr,ord,fk0,R_Tdis);
 
                 Tres  = dc.trovaPeriodoRestrizione(restr.DoseConstraint);
+
+                if contains(rf,'DOTATATE','IgnoreCase',true) && Tres < 5
+                    Tres = 5;   % forza a 5 giorni
+                end
+
                 descr = app.restr2human(restr.nome);      % helper testuale
 
                 rep.addScenario(restr.nome, Tres, descr);
@@ -116,7 +121,7 @@ classdef DoseApp < matlab.apps.AppBase
                     txt = "";
             end
         end
-
+        
     
     function PlotDoseButtonPushed(app)
         % --- parametri clinici
@@ -162,6 +167,10 @@ classdef DoseApp < matlab.apps.AppBase
             ord   = app.selectOrdScenario(names{k});
             dc    = DoseCalculator(restr,ord,fk0,R_Tdis);
             Tres  = dc.trovaPeriodoRestrizione(restr.DoseConstraint);
+            
+            if contains(RF,'DOTATATE','IgnoreCase',true) && Tres < 5
+                Tres = 5;
+            end
 
             out(idx) = sprintf('%-20s  T_res: %5.1f gg   (Dose7gg: %6.2f mSv)', ...
                 restr.nome, Tres, dc.calcolaDoseTotale(7));
