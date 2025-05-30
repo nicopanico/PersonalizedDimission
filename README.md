@@ -323,3 +323,59 @@ Le descrizioni per il paziente sono generate dalle funzioni
 (testo discorsivo nel PDF): se crei un nuovo scenario, **aggiungi** la
 corrispondente chiave nei due `switch‐case`.
 
+## Report PDF di istruzioni per il paziente
+
+Il foglio di dimissione in formato **PDF** fornisce al paziente – in
+linguaggio semplice – le restrizioni post-terapia personalizzate
+calcolate da **DoseApp**.
+
+---
+
+### 📄 Contenuto del documento
+
+| Sezione | Descrizione |
+|---------|-------------|
+| **Intestazione** | Nome paziente, radiofarmaco somministrato, rateo alla dimissione, data. |
+| **Tabella “Restrizioni raccomandate”** | Elenco degli scenari selezionati con <br>• `T_res` (giorni) calcolato <br>• descrizione sintetica della norma (colonna “Indicazioni pratiche”). |
+| **Calendario a colori 40 gg** | Griglia “semaforo” (rosso = fase restrittiva, giallo = transizione, verde = nessuna restrizione) che il paziente può spuntare giorno per giorno. |
+| **Norme di comportamento** | Paragrafi discorsivi generati da `restr2para` per ogni scenario, con esempi pratici (es. “dormi in un letto separato”, “non tenere il bimbo in braccio > 10 min”). |
+| **Firma medico** | Riquadro per firma manuale. |
+
+> **Nota** – Il layout è definito dalla classe `DReportBuilder`
+> (cartella *Matilda/classes*).  Può essere personalizzato
+> modificando stile, loghi, colori ecc. tramite DOM API.
+
+---
+
+### 🖱️ Generazione dal pulsante **“Genera PDF”**
+
+1. **Compila** il nome paziente e gli altri parametri clinici.
+2. **Seleziona** uno o più scenari nella colonna “Scenari di esposizione”.
+3. Clicca **Genera PDF** → scegli la cartella di salvataggio.  
+   DoseApp crea subito il file e lo apre con il visualizzatore predefinito.
+
+![Anteprima report](img/EsempioInformativoPDF.png)
+
+---
+
+### 🔧 Personalizzazioni rapide
+
+| Modifica | Dove intervenire |
+|----------|------------------|
+| **Testo norme discorsive** | Funzione `restr2para` in `DReportBuilder.m`. |
+| **Stile (font, colori)** | Blocchi `Style = {...}` all’interno di `build()`. |
+| **Aggiunta logo del Centro** | Inserire un oggetto `Image()` dopo l’intestazione. |
+| **Lingua/terminologia** | Stringhe fisse nella stessa classe (Heading, label colonne, ecc.). |
+
+---
+
+### ❓ Domande frequenti
+
+* **Il PDF non si apre.** Assicurati di avere un lettore PDF installato
+  (Windows: *Adobe Acrobat Reader*, macOS: *Preview*).
+* **Compare un errore “Report Generator license”.**  
+  Verifica la presenza del toolbox con  
+  `license('test','MATLAB_Report_Gen')` (deve restituire `1`).
+* **Alcune caselle della griglia semaforo mancano di bordo.**  
+  MATLAB ≤ R2021b semplifica i bordi sottili in stampa.  
+  Aumenta lo spessore (`'0.5pt'`) in `borderThin` se necessario.
