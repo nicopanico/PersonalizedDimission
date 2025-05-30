@@ -3,7 +3,7 @@
 ## Indice
 - [Introduzione](#introduzione)
 - [Requisiti software e installazione](#requisiti-software-e-installazione)
-- [Struttura del progetto](#struttura-del-progetto)
+- [Modello di calcolo della dose](#modello-di-calcolo-della-dose)      
 - [Utilizzo della GUI](#utilizzo-della-gui)
 - [Parametri clinici e farmacocinetica](#parametri-clinici-e-farmacocinetica)
 - [Scenari di esposizione](#scenari-di-esposizione)
@@ -54,3 +54,53 @@ Scaricare il repository completo (file `.zip`) oppure clonare direttamente da te
 
 ```bash
 git clone https://github.com/nicopanico/PersonalizedDimission.git
+```
+
+**2. Aprire MATLAB e inizializzare il codice**
+
+Avvia MATLAB e imposta la cartella contenente `PersonalizedDimission` come directory corrente.  
+Dalla Command Window digita:
+
+```matlab
+addpath(genpath('PersonalizedDimission'));  % include tutte le sottocartelle
+savepath;                                   % salva il percorso
+```
+In questo modo vengono aggiunte tutte le sottocartelle, è anche sufficiente aprire il codice direttamente da MATLAB dentro la cartella.
+
+## Modello di calcolo della dose
+
+DoseApp implementa un **modello di sorgente lineare** (altezza assiale $H \approx 1.70\,$m) con costante di normalizzazione $\Gamma$ scelta affinché  
+$\dot D(1\text{ m}) = 1\\mu\text{Sv·h}^{-1}$ quando $A_{\text{tot}} = 1$.
+
+La **dose-rate puntuale** a distanza $d$ vale
+
+
+$$
+\dot D(d)=
+\Gamma\
+\frac{A_{\text{tot}}}{Hd}\
+\arctan\\left(\frac{H}{2d}\right)
+$$
+
+
+Il **fattore di correzione geometrico** usato negli scenari è il rapporto tra due dose-rate:
+
+$$
+F_{\text{corr}}(d) \=\
+\frac{\dot D(d)}{\dot D(1\text{ m})}
+$$
+
+Il periodo di restrizione ottimale $T_{\text{res}}$ si ottiene risolvendo
+
+$$
+D_{\text{restr}}\bigl(T_{\text{res}}\bigr)
+\+\
+D_{\text{ord}}\bigl(T_{\text{res}}\bigr)
+\=\
+\text{DoseConstraint}
+$$
+
+dove $D_{\text{restr}}$ e $D_{\text{ord}}$ sono gli integrali dose-tempo sulle due fasi (restrittiva / ordinaria) secondo *Buonamici 2025*.  
+Il metodo di bisezione implementato in `DoseCalculator.trovaPeriodoRestrizione` garantisce una tolleranza di 0.01 giorni.
+
+> Per l’implementazione completa dei modelli, vedi anche la sezione [Note tecniche e modelli matematici utilizzati](#note-tecniche-e-modelli-matematici-utilizzati).
