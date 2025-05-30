@@ -153,3 +153,173 @@ L’interfaccia di **DoseApp** è suddivisa in tre colonne:
 | PDF non generato | Verifica licenza Report Generator:<br>`license('test','MATLAB_Report_Gen')` deve restituire `1` |
 
 > Per dubbi o segnalazioni apri pure una *Issue* su GitHub o contatta il maintainer indicato in [Riferimenti e contatti](#riferimenti-e-contatti).
+---
+
+## Parametri clinici e farmacocinetica
+
+La cinetica di eliminazione dei radiofarmaci è descritta in **DoseApp** da
+un modello bi-esponenziale:
+
+$$
+A(t)=A_{\text{tot}}
+     \Bigl[
+       f_{r_1}\,e^{-\lambda_{\text{eff,1}}\,t}
+       +f_{r_2}\,e^{-\lambda_{\text{eff,2}}\,t}
+     \Bigr],
+\qquad
+\sum_i f_{r_i}=1
+$$
+
+| Variabile | Significato | Unità |
+|-----------|-------------|-------|
+| $f_{r_i}$ | Frazione di attività nel compartimento *i* | — |
+| $\lambda_{\text{eff},i}$ | Costante di decadimento **effettiva** (biologico + fisico) | d⁻¹ |
+| $A_{\text{tot}}$ | Attività somministrata | MBq |
+
+---
+
+### 🔬 Dataset pre-caricato
+
+I parametri sono memorizzati in `radiopharmaceuticals.json`:
+
+```json
+[
+  {
+    "name": "I-131 Carcinoma Tiroideo",
+    "fr":         [0.70, 0.30],
+    "lambda_eff": [2.16, 0.0866]
+  },
+  {
+    "name": "I-131 Ipotiroidismo",
+    "fr":         [0.20, 0.80],
+    "lambda_eff": [0.693, 0.0866]
+  },
+  {
+    "name": "Lu-177-DOTATATE",
+    "fr":         [0.44, 0.56],
+    "lambda_eff": [2.25, 0.175]
+  },
+  {
+    "name": "Lu-177-PSMA",
+    "fr":         [0.44, 0.56],
+    "lambda_eff": [2.25, 0.175]
+  }
+]
+```
+
+### 🛠️ Come aggiornare il file `radiopharmaceuticals.json`
+
+1. **Apri il file**  
+   Si trova nella cartella principale del progetto. Usa un editor di testo
+   (es. VS Code, Notepad++, Sublime).
+
+2. **Aggiungi o modifica un blocco JSON**
+
+   Ogni radio-farmaco è un oggetto con tre campi obbligatori:
+
+   ```jsonc
+   {
+     "name": "Nuovo-Radiofarmaco",
+     "fr":         [f1, f2],        // due frazioni che sommano a 1
+     "lambda_eff": [λ1, λ2]        // corrispondenti costanti (d⁻¹)
+   }
+
+**Linee guida**
+
+- Usa **punto decimale** (`0.175`, non `0,175`).
+- Mantieni **esattamente 2** componenti in `fr` e `lambda_eff`.
+- Controlla che `f1 + f2 = 1`.
+- Inserisci una virgola `,` **fra gli oggetti JSON**, tranne dopo l’ultimo elemento.
+
+**Convalida il JSON**
+
+1. Copia‐incolla il contenuto in un validator online (ad es. <https://jsonlint.com>).  
+2. Salva il file **solo se** il validator restituisce “Valid JSON”.
+
+> **Se la GUI non vede il nuovo radiofarmaco**
+> - Verifica la sintassi del file JSON.  
+> - Chiudi e riapri MATLAB (oppure esegui `clear all` in Command Window).
+---
+### 📚 Bibliografia — dati farmacocinetici
+
+| # | Riferimento (DOI) | Radio-farmaco / Parametri estratti |
+|---|-------------------|------------------------------------|
+| **[H1]** | Hänscheid, H. *et al.* “Time–activity curves after therapeutic administration of **¹³¹I** in differentiated thyroid cancer patients.” *J Nucl Med* 47 (2006) 1481-1487. **doi:10.2967/jnumed.106.033860** | I-131 carcinoma tiroideo – $f_{r}$, $\lambda_{\text{eff}}$ |
+| **[B1]** | Broggio, D. *et al.* “Discharge criteria after **¹³¹I** therapy: a dosimetric approach.” *Radiat Prot Dosimetry* 187 (2019) 135-142. **doi:10.1093/rpd/ncy236** | I-131 ipertiroidismo – $f_{r}$, $\lambda_{\text{eff}}$ |
+| **[G1]** | Garske, U. *et al.* “Individualised dosimetry for patients receiving therapy with **¹⁷⁷Lu-DOTATATE**.” *Eur J Nucl Med Mol Imaging* 39 (2012) 1688-1696. **doi:10.1007/s00259-012-2182-3** | Lu-177-DOTATATE – $f_{r}$, $\lambda_{\text{eff}}$ |
+| **[V1]** | Violet, J. *et al.* “Prospective study of **¹⁷⁷Lu-PSMA-617** theranostics in men with metastatic prostate cancer.” *Lancet Oncol* 21 (2020) 140-152. **doi:10.1016/S1470-2045(19)30684-5** | Lu-177-PSMA – $f_{r}$, $\lambda_{\text{eff}}$ |
+
+> I valori di frazione ($f_{r}$) e costante di decadimento effettiva ($\lambda_{\text{eff}}$) inclusi nel file `radiopharmaceuticals.json`
+> sono stati digitalizzati o dedotti dalle curve tempo-attività presentate nei lavori sopra elencati.
+---
+## Scenari di esposizione
+
+Gli scenari di esposizione implementati in **DoseApp** sono
+l’adattamento operativo delle Tabelle 2-3 del lavoro di  
+Buonamici *et al.* (2025), rivisitati con la pratica clinica del
+nostro Centro.
+
+*Ogni scenario è codificato nel file `Scenario.m` come metodo `Static`
+che restituisce un oggetto `Scenario` con:*
+
+| Proprietà | Significato |
+|-----------|-------------|
+| `distanze` | vettore delle distanze (m) considerate nelle 24 h |
+| `tempi`    | ore/gg a ciascuna distanza (stessa lunghezza di `distanze`) |
+| `DoseConstraint` | vincolo di dose per l’esposo 🡒 serve al calcolo di $T_\text{res}$ |
+
+---
+
+### 🔒 Fase restrittiva
+
+| Nome GUI | Distanza / Tempo (h · d⁻¹) | Vincolo (mSv) | Motivazione clinica sintetica |
+|----------|---------------------------|---------------|--------------------------------|
+| **Partner** | 1 m  ➝  2 h | 3 | Evita condivisione letto; contatto ravvicinato ridotto a pasti/TV |
+| **Bambino \< 2 aa** | 1 m → 1.5 h  ·  2 m → 2 h | 1 | Neonato/infante: non allatta, contatto ravvicinato limitato |
+| **Bambino 2–5** | 1 m → 1.5 h  ·  2 m → 1.5 h | 1 | Gioco vicino ma senza tenerlo in braccio > 10 min |
+| **Bambino 5–11** | 1 m → 2.5 h | 1 | Compiti, pasti al tavolo, niente “abbracci lunghi” |
+| **Trasporto** | 0.5 m → 0.5 h | 0.3 | Evitare mezzi affollati > 30 min nei primi 2 gg |
+| **Donna incinta** | 1 m → 2 h | 1 | Nessun contatto < 1 m; evita sedersi accanto a lungo |
+| **Assenza lavoro** | — (nessuna distanza) | 0.3 | Congedo INPS: non in ufficio fino a fine $T_\text{res}$ |
+
+> Le durate ottimali $T_\text{res}$ (15 gg partner, 39/32/24 gg bambini,
+> 22 gg colleghi, …) sono calcolate dalla classe `DoseCalculator`
+> soddisfacendo i vincoli di dose sopra indicati.
+
+---
+
+### 👥 Fase ordinaria
+
+Dopo il periodo restrittivo il paziente rientra in una routine più
+elastica; gli scenari “ordinari” riflettono una **giornata tipo** con
+contatti prolungati ma a distanze maggiori.
+
+| Nome GUI | Distanza / Tempo (h · d⁻¹) | Note |
+|----------|---------------------------|------|
+| **Partner (ord.)** | 0.3 m → 6 h · 1 m → 3.5 h · 2 m → 9.5 h | Condivisione stanza, letto matrimoniale |
+| **Bambino \< 2 (ord.)** | 0.1 m → 1.5 h · 0.3 m → 4 h · 1 m → 6 h · 2 m → 12 h | Include poppata e gioco assistito |
+| **Bambino 2–5 (ord.)** | 0.1 m → 2 h · 2 m → 6 h · lontano → 16 h | |
+| **Bambino 5–11 (ord.)** | 0.5 m → 2.5 h · 1 m → 3 h · 2 m → 6 h | |
+| **Colleghi (ord.)** | 1 m → 8 h · lontano → 16 h | Rientro standard a scrivania vicina |
+| **Colleghi ≥ 2 m** | 2 m → 8 h · lontano → 16 h | Opzione “Sempre ≥ 2 m” in GUI |
+| **Trasporto (ord.)** | 0.3 m → 1 h · 1 m → 2 h · lontano → 21 h | |
+| **Donna incinta (ord.)** | 1 m → 6 h · lontano → 18 h | |
+
+---
+> Tutti i contatti sopra i 2m sono considerati trascurabili e negligibili ai fini della dose
+
+### ✏️ Come modificare/creare scenari
+
+1. **Apri `Scenario.m`.**  
+2. Copia uno dei metodi statici e rinominalo, ad es. `Partner_NoNight`.
+3. Regola `distanze`, `tempi` (in ore/24 h) e, se serve, il vincolo
+   `DoseConstraint`.  
+4. Aggiungi la factory al blocco `pairMap` / `pairMapOrd`
+   (file `DoseApp.m`, costruttore).  
+5. Riavvia l’app: la nuova voce apparirà nelle CheckBox della colonna 2.
+
+Le descrizioni per il paziente sono generate dalle funzioni
+`restr2human` (tabella riepilogo) e `restr2para`
+(testo discorsivo nel PDF): se crei un nuovo scenario, **aggiungi** la
+corrispondente chiave nei due `switch‐case`.
+
