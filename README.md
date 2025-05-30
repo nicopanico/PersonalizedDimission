@@ -104,3 +104,52 @@ dove $D_{\text{restr}}$ e $D_{\text{ord}}$ sono gli integrali dose-tempo sulle d
 Il metodo di bisezione implementato in `DoseCalculator.trovaPeriodoRestrizione` garantisce una tolleranza di 0.01 giorni.
 
 > Per l’implementazione completa dei modelli, vedi anche la sezione [Note tecniche e modelli matematici utilizzati](#note-tecniche-e-modelli-matematici-utilizzati).
+
+## Utilizzo della GUI
+
+![Panoramica GUI](docs/img/gui_overview.png)
+
+L’interfaccia di **DoseApp** è suddivisa in tre colonne:
+
+| # | Pannello | Funzione principale |
+|---|----------|--------------------|
+| **①** | **Parametri clinici** | Inserisci nome paziente, *T*<sub>discharge</sub>, rateo di dimissione e radio-farmaco. <br> Contiene i pulsanti **Calcola Dose**, **Grafico Dose** e **Genera PDF**. |
+| **②** | **Scenari di esposizione** | Spunta uno o più scenari restrittivi (partner, bambino, colleghi, ecc.). <br> Per **Colleghi** appare un menu a tendina per scegliere la distanza “Standard ≈ 1 m” o “Sempre ≥ 2 m”. |
+| **③** | **Risultati** | Mostra, per ogni scenario selezionato, il periodo ottimale di restrizione **T**<sub>res</sub> (in giorni) e la dose cumulativa a 7 gg. <br> I valori sono in grassetto e separati da una riga vuota per facilitarne la lettura. |
+
+---
+> Consiglio rapido: dopo aver compilato i parametri e selezionato gli scenari, premi **Genera PDF** per ottenere il foglio istruzioni da consegnare al paziente.
+
+### Passaggi rapidi
+
+1. **Compila i parametri clinici**  
+   - Nome paziente (facoltativo)  
+   - *T*<sub>discharge</sub> (giorni)  
+   - Rateo *R*<sub>T dis</sub> (µSv / h @ 1 m)  
+   - Attività somministrata (MBq)  
+   - Seleziona il radiofarmaco dal menu a tendina
+
+2. **Seleziona gli scenari**  
+   Spunta le caselle corrispondenti alle restrizioni da valutare.  
+   È possibile selezionare più scenari contemporaneamente.
+
+3. **Calcola o visualizza**  
+   - **Calcola Dose**: popola il riquadro “Risultati” con **T**<sub>res</sub> e dose 7 gg.  
+   - **Grafico Dose**: apre la curva -dose vs *T*<sub>res</sub> con evidenza del limite di dose.
+
+4. **Genera il PDF**  
+   - Clicca **Genera PDF** → scegli dove salvare il file.  
+   - Il report include intestazione, tabella riassuntiva, calendario “semaforo” a 40 gg e spiegazioni discorsive per ogni scenario.
+
+---
+
+### Suggerimenti utili
+
+| Esigenza | Operazione |
+|----------|------------|
+| Aggiornare parametri farmacocinetici | Modifica `radiopharmaceuticals.json`, poi riavvia l’app |
+| Aggiungere un nuovo scenario | Implementa il metodo statico in `Scenario.m` **e** aggiorna `doseApp.pairMap` / `pairMapOrd` |
+| Cambiare altezza sorgente lineare | Modifica il costruttore `ModelloLineare( H )` (riga 183 di `DoseApp.m`) |
+| PDF non generato | Verifica licenza Report Generator:<br>`license('test','MATLAB_Report_Gen')` deve restituire `1` |
+
+> Per dubbi o segnalazioni apri pure una *Issue* su GitHub o contatta il maintainer indicato in [Riferimenti e contatti](#riferimenti-e-contatti).
