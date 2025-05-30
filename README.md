@@ -107,7 +107,7 @@ Il metodo di bisezione implementato in `DoseCalculator.trovaPeriodoRestrizione` 
 
 ## Utilizzo della GUI
 
-![Panoramica GUI](docs/img/gui_overview.png)
+![Panoramica GUI](img/gui_overview.png)
 
 L’interfaccia di **DoseApp** è suddivisa in tre colonne:
 
