@@ -137,7 +137,7 @@ classdef DoseApp < matlab.apps.AppBase
                 case "trasporto"
                     txt = "Limitazioni mezzi pubblici nei primi 2 gg";
                 case "incinta"
-                    txt = "≥1 m per 6 h/gg; niente contatto ravvicinato";
+                    txt = "≥1 m per 6 h/g; niente contatto ravvicinato";
                 otherwise
                     txt = "";
             end

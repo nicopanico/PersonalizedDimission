@@ -44,7 +44,7 @@ classdef Scenario
             %    divano, stesso ambiente).
             %  • In `DoseApp` compare quando l’utente spunta “Partner”.
             % =================================================================
-            sc = Scenario("Partner", [1.0], [2.0], m, 3.0);  % 1 h @ 1 m
+            sc = Scenario("Partner", [1.0], [2.0], m, 3.0);  % 2 h @ 1 m
         end
         function sc = NessunaRestr(m)
             % =================================================================
@@ -63,11 +63,16 @@ classdef Scenario
             % Nessuna fase restrittiva
             sc = Scenario("No restr.", [], [], m, 3);
         end
-
         function sc = TrasportoPubblico(m)
-            % Travel in public transport
-            %  0.5 h @ 0.1 m, constraint = 0.3 mSv
-            sc = Scenario("Trasporto restr.",[0.5],[0.5],m,0.3);
+            % -----------------------------------------------------------------
+            %  SCENARIO: TRASPORTO PUBBLICO
+            %
+            %  • Il calcolo delle ore di viaggio consentite NON passa più
+            %    dalle distanze/tempi fissi, ma dalla tabella 6 (vedi DoseApp).
+            %  • Qui lasciamo distanze/tempi vuoti: la dose calcolata è 0,
+            %    mentre il vincolo rimane 0.3 mSv (pubblico).
+            % -----------------------------------------------------------------
+            sc = Scenario("Trasporto restr.", [], [], m, 0.3);
         end
 
         function sc = Bambino_0_2(m)

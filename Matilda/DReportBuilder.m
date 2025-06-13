@@ -88,15 +88,39 @@ classdef DReportBuilder < handle
                 % ---------- righe dati ---------------------------------------------------
                 for k = 1:numel(obj.Scenarios)
                     s = obj.Scenarios(k);
+
+                    % ───── rileva “Trasporto” + 177Lu ───────────────────────────
+                    isTrav = contains(s.Name,'Trasporto','IgnoreCase',true);
+                    isLu   = contains(obj.RadioPharm,'DOTATATE','IgnoreCase',true) || ...
+                        contains(obj.RadioPharm,'PSMA','IgnoreCase',true);
+
                     r = TableRow();
                     if mod(k,2)==0, r.Style = {BackgroundColor('#f7f7f7')}; end
 
-                    e = TableEntry(s.Name);               e.Style = borderThin; append(r,e);
+                    % colonna 1 : nome scenario
+                    e = TableEntry(s.Name);   e.Style = borderThin;  append(r,e);
 
-                    e = TableEntry(sprintf('%.0f',s.Tres));
-                    e.Style = [borderThin, {HAlign('center')}];               append(r,e);
+                    % ------- colonna 2-3 in base al caso -----------------------
+                    if isLu && isTrav
+                        % ---- 177Lu / Viaggio  ---------------------------------
+                        oreMax = DReportBuilder.maxOreTravel(obj.DischargeRate);
 
-                    e = TableEntry(s.Instr);              e.Style = borderThin; append(r,e);
+                        % Giorni “–”
+                        e = TableEntry('–');
+                        e.Style = [borderThin, {HAlign('center')}];
+                        append(r,e);
+
+                        % Indicazioni pratiche con ore max
+                        txt = sprintf('Può viaggiare massimo %.1f h totali su mezzi pubblici', oreMax);
+                        e = TableEntry(txt);  e.Style = borderThin;  append(r,e);
+
+                    else
+                        % ---- casi normali (manteniamo T_res) ------------------
+                        e = TableEntry(sprintf('%.0f', s.Tres));
+                        e.Style = [borderThin, {HAlign('center')}];   append(r,e);
+
+                        e = TableEntry(s.Instr);   e.Style = borderThin;   append(r,e);
+                    end
 
                     append(tbl,r);
                 end
@@ -124,6 +148,10 @@ classdef DReportBuilder < handle
                 append(mat,hdr);
 
                 for s = obj.Scenarios
+                    isTrav = contains(s.Name,'Trasporto','IgnoreCase',true);
+                    isLu   = contains(obj.RadioPharm,'DOTATATE','IgnoreCase',true) || ...
+                        contains(obj.RadioPharm,'PSMA','IgnoreCase',true);
+
                     r = TableRow();
                     eName = TableEntry(s.Name);
                     eName.Style = {Width('30mm'),FontSize('8pt')};
@@ -191,7 +219,7 @@ classdef DReportBuilder < handle
                     txt = [ ...
                         "Per i primi T_res giorni si raccomanda di non condividere ", ...
                         "il letto con il partner. Il contatto ravvicinato (ad es. ", ...
-                        "a tavola) deve restare entro 1 h/g; le attività a più di ", ...
+                        "a tavola) deve restare entro 2 h/gg; le attività a più di ", ...
                         "2 m, come guardare la TV su divani separati, sono sicure."];
                 case "bambino <2"
                     txt = [ ...
@@ -213,16 +241,28 @@ classdef DReportBuilder < handle
                         "Puoi riprendere il lavoro dopo T_res giorni. Mantieni ", ...
                         "permanentemente la distanza minima indicata (≥1 m o ≥2 m ", ...
                         "se selezionato) durante l’orario di lavoro."];
-                case "trasporto"
-                    txt = [ ...
-                        "Evita mezzi pubblici nei primi 2 giorni, oppure limita il ", ...
-                        "tragitto a max 30 min. Successivamente, nessuna restrizione."];
                 case "incinta"
                     txt = [ ...
                         "Per T_res giorni mantieni almeno 1 m da donne in gravidanza ", ...
                         "e riduci al minimo il contatto fisico diretto."];
+                case "trasporto"
+                    txt = [ ...
+                        "Per i primi 2 giorni limita/evita i mezzi pubblici secondo le " ...
+                        "indicazioni in tabella. In automobile privata siedi sul sedile " ...
+                        "posteriore, lato passeggero, mantenendo ≥1 m dal guidatore." ];
                 otherwise
                     txt = "";
+            end
+        end
+    end
+    methods (Static)
+        function ore = maxOreTravel(rateo)
+            % Tabella 6 AIFM-AIMN 2024
+            lim = [5 10 15 20 30 40];     % µSv/h
+            ore = [0  1   2  3  4  6 ];   % h di viaggio
+            idx = find(rateo < lim, 1,'first');
+            if isempty(idx), ore = ore(end);
+            else,             ore = ore(idx);
             end
         end
     end
