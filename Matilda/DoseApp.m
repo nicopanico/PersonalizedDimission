@@ -37,6 +37,10 @@ classdef DoseApp < matlab.apps.AppBase
         RisultatiTextArea matlab.ui.control.TextArea
         PlotDoseButton    matlab.ui.control.Button
         WorkDistDrop      matlab.ui.control.DropDown
+
+        %  Menu per i plugin
+        MenuPlugins         matlab.ui.container.Menu
+        Plugins             cell
     end
 
     properties (Access = private)
@@ -266,117 +270,145 @@ classdef DoseApp < matlab.apps.AppBase
         end
     end
     end
-    % ========================= COSTRUTTORE =========================
+
+
+    %% ========================= COSTRUTTORE ========================
+    % DoseApp constructor with plugin integration
     methods (Access = public)
         function app = DoseApp
+            % 1) Costruisci UI base (pannelli, grid, controlli)
             createComponents(app);
 
+            % 2) Plugin: carica tutti i .m in plugins/, istanzia e riempi Menu
+            app.Plugins = {};
+            % Trova il file DoseApp.m e la dir dei plugin
+            appFile    = which('DoseApp');
+            pluginsDir = fullfile(fileparts(appFile),'plugins');
+            if isfolder(pluginsDir)
+                addpath(pluginsDir);
+                files = dir(fullfile(pluginsDir,'*.m'));
+                for k = 1:numel(files)
+                    [~,name] = fileparts(files(k).name);
+                    mc = meta.class.fromName(name);
+                    if ~isempty(mc) && any(strcmp({mc.SuperclassList.Name},'DoseAppPluginBase'))
+                        % Istanzia plugin e salva handle
+                        pluginObj = feval(name);
+                        app.Plugins{end+1} = pluginObj;
+                        % Aggiungi voce di menu che apre il plugin
+                        uimenu(app.MenuPlugins, ...
+                            'Text', pluginObj.pluginName(), ...
+                            'MenuSelectedFcn', @(~,~) app.openPlugin(pluginObj));
+                    end
+                end
+            else
+                warning('Directory plugin non trovata: %s', pluginsDir);
+            end
+
+            % 3) Inizializza modello e scenari
             app.modello = ModelloLineare(1.70);
+            configs = getScenariosConfig();
+            for i = 1:numel(configs)
+                c = configs(i);
+                app.pairMap.(c.key) = @(m) Scenario( ...
+                    c.label+" restr.", c.restr.dist, c.restr.time, m, c.restr.Dc);
+                app.pairMapOrd.(c.key) = @(m) Scenario( ...
+                    c.label+" ord.",   c.ord.dist,   c.ord.time,   m, c.ord.Dc);
+                if ~isempty(c.ord2m.dist)
+                    app.pairMapOrd.([c.key '2m']) = @(m) Scenario( ...
+                        c.label+" ord. ≥2 m", c.ord2m.dist, c.ord2m.time, m, c.ord2m.Dc);
+                end
+            end
 
-            % ---------- factory restrittivi ----------
-            app.pairMap = struct( ...
-                'Partner',    @Scenario.Partner, ...
-                'Trasporto',  @Scenario.TrasportoPubblico, ...
-                'Bambino02',  @Scenario.Bambino_0_2, ...
-                'Bambino25',  @Scenario.Bambino_2_5, ...
-                'Bambino511', @Scenario.Bambino_5_11, ...
-                'Incinta',    @Scenario.DonnaIncinta, ...
-                'Colleghi',   @Scenario.NessunaRestr );
-
-            % ---------- factory ordinari ----------
-            app.pairMapOrd = struct( ...
-                'Partner',   @Scenario.Ordinario_Partner, ...
-                'Trasporto', @Scenario.Ordinario_Trasporto, ...
-                'Bambino02', @Scenario.Ordinario_Bambino_0_2, ...
-                'Bambino25', @Scenario.Ordinario_Bambino_2_5, ...
-                'Bambino511',@Scenario.Ordinario_Bambino_5_11, ...
-                'Incinta',   @Scenario.Ordinario_Incinta, ...
-                'Colleghi',  @Scenario.Ordinario_Colleghi );
-
-            % nuova factory per variante ≥2 m
-            app.pairMapOrd.Colleghi2m = @Scenario.Ordinario_Colleghi_2m;
-
-            registerApp(app,app.UIFigure);
-            if nargout==0, clear app, end
+            % === 4) registra e mostra ===
+            registerApp(app, app.UIFigure);
+            if nargout==0, clear app; end
         end
-        function delete(app), delete(app.UIFigure); end
     end
 
     % ========================= GUI BUILD =========================
     methods (Access = private)
         function createComponents(app)
-            % === finestra e griglia principale ===
+            % === finestra e griglia principale a 2 righe, 3 colonne ===
             app.UIFigure = uifigure('Name','DoseApp','Position',[100 100 1000 600]);
             app.GridLayout = uigridlayout(app.UIFigure,[1,3]);
-            app.GridLayout.ColumnWidth = {'fit','1x','1.5x'};
+            app.GridLayout.ColumnWidth = {'fit','1x','1.5x'}
 
-            %% Colonna 1 – Parametri clinici
+            %% Colonna 1 – Parametri clinici (riga 1, colonna 1)
             app.ParametriPanel = uipanel(app.GridLayout,'Title','Parametri Clinici');
+            app.ParametriPanel.Layout.Row    = 1;
             app.ParametriPanel.Layout.Column = 1;
 
-            gl1 = uigridlayout(app.ParametriPanel,[6,2]);   %  <-- era [5,2]
+            gl1 = uigridlayout(app.ParametriPanel,[6,2]);
             gl1.RowHeight   = repmat({'fit'},1,6);
             gl1.ColumnWidth = {'fit','1x'};
 
-            % ---------- riga 1 : Paziente -------------------------------------------
+            % Paziente
             app.PatientLabel = uilabel(gl1,'Text','Paziente');
-            app.PatientLabel.Layout.Row = 1;  app.PatientLabel.Layout.Column = 1;
-
+            app.PatientLabel.Layout.Row    = 1;
+            app.PatientLabel.Layout.Column = 1;
             app.PatientNameField = uieditfield(gl1,'text','Placeholder','Mario Rossi');
-            app.PatientNameField.Layout.Row = 1;  app.PatientNameField.Layout.Column = 2;
+            app.PatientNameField.Layout.Row    = 1;
+            app.PatientNameField.Layout.Column = 2;
 
-            % ---------- riga 2 : Tdis -----------------------------------------------
+            % T_discharge
             app.TDischargeLabel = uilabel(gl1,'Text','T_{discharge} (giorni)');
-            app.TDischargeLabel.Layout.Row = 2;  app.TDischargeLabel.Layout.Column = 1;
-
+            app.TDischargeLabel.Layout.Row    = 2;
+            app.TDischargeLabel.Layout.Column = 1;
             app.TDischargeField = uieditfield(gl1,'numeric','Value',1);
-            app.TDischargeField.Layout.Row = 2;  app.TDischargeField.Layout.Column = 2;
+            app.TDischargeField.Layout.Row    = 2;
+            app.TDischargeField.Layout.Column = 2;
 
-            % ---------- riga 3 : R_Tdis ---------------------------------------------
+            % R_Tdis
             app.RTdisLabel = uilabel(gl1,'Text','R_{Tdis} (µSv/h)');
-            app.RTdisLabel.Layout.Row = 3;  app.RTdisLabel.Layout.Column = 1;
-
+            app.RTdisLabel.Layout.Row    = 3;
+            app.RTdisLabel.Layout.Column = 1;
             app.R_TdisField = uieditfield(gl1,'numeric','Value',25);
-            app.R_TdisField.Layout.Row = 3;  app.R_TdisField.Layout.Column = 2;
+            app.R_TdisField.Layout.Row    = 3;
+            app.R_TdisField.Layout.Column = 2;
 
-            % ---------- riga 4 : Attività -------------------------------------------
+            % Attività
             app.AttivitaLabel = uilabel(gl1,'Text','Attività (MBq)');
-            app.AttivitaLabel.Layout.Row = 4;  app.AttivitaLabel.Layout.Column = 1;
-
+            app.AttivitaLabel.Layout.Row    = 4;
+            app.AttivitaLabel.Layout.Column = 1;
             app.AttivitaField = uieditfield(gl1,'numeric','Value',740);
-            app.AttivitaField.Layout.Row = 4;  app.AttivitaField.Layout.Column = 2;
+            app.AttivitaField.Layout.Row    = 4;
+            app.AttivitaField.Layout.Column = 2;
 
-            % ---------- righe 5-6 : pannello Radiofarmaco + bottoni ------------------
+            % Radiofarmaco + bottoni
             app.RadiofarmacoPanel = uipanel(gl1,'Title','Radiofarmaco');
-            app.RadiofarmacoPanel.Layout.Row    = [5 6];   %  <-- +1
+            app.RadiofarmacoPanel.Layout.Row    = [5 6];
             app.RadiofarmacoPanel.Layout.Column = [1 2];
-
-
             app.RadiofarmacoDropDown = uidropdown(app.RadiofarmacoPanel, ...
-                'Items', {'I-131 Carcinoma Tiroideo', 'I-131 Ipotiroidismo', ...
-                'Lu-177-DOTATATE', 'Lu-177-PSMA'}, ...
-                'Position', [10 35 200 22]);
-
-            app.CalcolaDoseButton = uibutton(app.RadiofarmacoPanel, 'push', ...
+                'Items', {'I-131 Carcinoma Tiroideo','I-131 Ipotiroidismo', ...
+                'Lu-177-DOTATATE','Lu-177-PSMA'}, ...
+                'Position',[10 35 200 22]);
+            app.CalcolaDoseButton = uibutton(app.RadiofarmacoPanel,'push', ...
                 'Text','Calcola Dose', ...
                 'Position',[10 5 120 28], ...
                 'ButtonPushedFcn',@(btn,event) CalcolaDoseButtonPushed(app,event));
-
-            app.PlotDoseButton = uibutton(app.RadiofarmacoPanel, 'push', ...
+            app.PlotDoseButton = uibutton(app.RadiofarmacoPanel,'push', ...
                 'Text','Grafico Dose', ...
                 'Position',[140 5 120 28], ...
-                'ButtonPushedFcn', @(btn,event) PlotDoseButtonPushed(app));
-
+                'ButtonPushedFcn',@(btn,event) PlotDoseButtonPushed(app));
             app.ReportButton = uibutton(app.RadiofarmacoPanel,'push', ...
                 'Text','Genera PDF', ...
                 'Position',[10 -25 120 28], ...
-                'ButtonPushedFcn',@(btn,ev) generaPDF(app));
+                'ButtonPushedFcn',@(btn,event) generaPDF(app));
 
-            %% Colonna 2 – Scenari di esposizione
+            %% Colonna 2 – Scenari di esposizione (riga 1, colonna 2)
             app.ScenariPanel = uipanel(app.GridLayout,'Title','Scenari di esposizione');
+            app.ScenariPanel.Layout.Row    = 1;
             app.ScenariPanel.Layout.Column = 2;
-            glSc = uigridlayout(app.ScenariPanel,[8,1]);  % +1 riga
+            % (poi la generazione dinamica dei checkbox basata su configs, se la usi)
+          
+            % Layout interno: 8 righe (7 checkbox + 1 gruppo) × 1 colonna
+            glSc = uigridlayout(app.ScenariPanel,[8,1]);
+            glSc = uigridlayout(app.ScenariPanel,[8,1]);
+            glSc.RowHeight  = repmat({'fit'},1,8);
+            glSc.RowSpacing = 45;           % pixel tra una riga e l4altra
+            glSc.Padding    = [10 5 10 5]; % [top right bottom left] margini interni
 
+            % --- checkboxes per ogni scenario ---
             app.PartnerCheckBox    = uicheckbox(glSc,'Text','Partner');
             app.TrasportoCheckBox  = uicheckbox(glSc,'Text','Trasporto pubblico');
             app.Bambino02CheckBox  = uicheckbox(glSc,'Text','Bambino <2 aa');
@@ -385,34 +417,46 @@ classdef DoseApp < matlab.apps.AppBase
             app.IncintaCheckBox    = uicheckbox(glSc,'Text','Donna incinta');
             app.ColleghiCheckBox   = uicheckbox(glSc,'Text','Colleghi lavoro');
 
-            % --- gruppo per distanza al lavoro --------------------
+            % --- gruppo per distanza al lavoro (visibile solo se Colleghi) ---
             app.WorkDistGroup = uibuttongroup(glSc, ...
-                'Title','Distanza al lavoro', ...
-                'Visible','off');
-            app.WorkDistGroup.Layout.Row = 8;
+                'Title','Distanza al lavoro','Visible','off');
+            % posiziona il gruppo nell’ottava riga
+            app.WorkDistGroup.Layout.Row    = 8;
             app.WorkDistGroup.Layout.Column = 1;
 
-            % sostituisci ENTRO il gruppo:
+            % dropdown dentro il gruppo
             app.WorkDistDrop = uidropdown(app.WorkDistGroup, ...
                 'Items', {'Standard (≈1 m)', 'Sempre ≥ 2 m'}, ...
-                'Value', 'Standard (≈1 m)', ...
-                'Position',[10 10 160 22]);     % x y w h
+                'Value', 'Standard (≈1 m)');
+            app.WorkDistDrop.Position = [10 10 160 22];
 
-            % callback visibilità
+            % callback di visibilità
             app.ColleghiCheckBox.ValueChangedFcn = ...
                 @(cb,~) set(app.WorkDistGroup,'Visible',cb.Value);
 
-
-            %% Colonna 3 - Risultati
-            app.RisultatiPanel = uipanel(app.GridLayout, 'Title','Risultati');
+            %% Colonna 3 – Risultati (riga 1, colonna 3)
+            app.RisultatiPanel = uipanel(app.GridLayout,'Title','Risultati');
+            app.RisultatiPanel.Layout.Row    = 1;
             app.RisultatiPanel.Layout.Column = 3;
-            gl3 = uigridlayout(app.RisultatiPanel, [1,1]);
-            app.RisultatiTextArea = uitextarea(gl3);
-            app.RisultatiTextArea.Layout.Row = 1;
+            gl3 = uigridlayout(app.RisultatiPanel,[1,1]);
+            app.RisultatiTextArea = uitextarea(gl3,'Value',{'Risultati...'});
+            app.RisultatiTextArea.Layout.Row    = 1;
             app.RisultatiTextArea.Layout.Column = 1;
-            app.RisultatiTextArea.Value = "Risultati...";
-            app.RisultatiTextArea.Value = {'Risultati...'};
+
+            %% Finestra Plugin
+            app.MenuPlugins = uimenu(app.UIFigure, 'Text', 'Plugins');
+
         end
+    end
+    %% ---------- HELPER ---------------------
+    methods (Access = private)
+        function openPlugin(app, pluginObj)
+            % Apre una nuova finestra dedicata al plugin
+            fig = uifigure('Name', pluginObj.pluginName(), 'Position',[200 200 400 300]);
+            pluginObj.init(app, fig);
+        end
+
+        % … tutti i tuoi altri callback e helper (generaPDF, CalcolaDoseButtonPushed, ecc.) …
     end
 end
 
