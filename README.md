@@ -526,8 +526,8 @@ Per ogni scenario si distinguono:
 Dose settimanale visualizzata in GUI:
 
 $$
-D_{7\text{ gg}} = (\dot D_{T_\text{dis}})\;24\;
-\frac{D_{\text{restr}}+D_{\text{ord}}}{1000}\;\text{[mSv]}
+D_{7\text{ gg}} = (\dot D_{T_\text{dis}})\;24\
+\frac{D_{\text{restr}}+D_{\text{ord}}}{1000}\\text{[mSv]}
 $$
 
 dove $(\dot D_{T_\text{dis}})$ è il rateo alla dimissione (µSv h⁻¹).
@@ -586,3 +586,19 @@ Output convertito in \(f_i,\lambda_i\) (λ in d⁻¹) e
 
 Per la bibliografia completa vedi la sezione **Riferimenti** del README.
 
+## Riferimenti e contatti
+<a name="riferimenti-e-contatti"></a>
+
+### Riferimento bibliografico chiave
+| ID | Citazione |
+|----|-----------|
+| **[BB25]** | Banci Buonamici _et al._ “Discharge optimisation after radionuclide therapy.” **J Radiol Prot** 43 (2025) 021504. |
+
+### Contatti  
+Per domande / segnalazioni:
+
+| Nome | Ruolo / Struttura | Email |
+|------|-------------------|-------|
+| Federica Fioroni | Fisica Sanitaria – AUSL Reggio Emilia | federica.fioroni@ausl.re.it |
+| Nicola Panico   | Fisica Sanitaria – AUSL Reggio Emilia | nicola.panico@ausl.re.it   |
+| Elisa Grassi    | Fisica Sanitaria – AUSL Reggio Emilia | elisa.grassi@ausl.re.it    
