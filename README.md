@@ -3,7 +3,8 @@
 ## Indice
 - [Introduzione](#introduzione)
 - [Requisiti software e installazione](#requisiti-software-e-installazione)
-- [Modello di calcolo della dose](#modello-di-calcolo-della-dose)      
+- [Modello di calcolo della dose](#modello-di-calcolo-della-dose)
+- [Sistema a Plugin](#sistema-a-plugin)     
 - [Utilizzo della GUI](#utilizzo-della-gui)
 - [Parametri clinici e farmacocinetica](#parametri-clinici-e-farmacocinetica)
 - [Scenari di esposizione](#scenari-di-esposizione)
@@ -104,6 +105,64 @@ dove $D_{\text{restr}}$ e $D_{\text{ord}}$ sono gli integrali dose-tempo sulle d
 Il metodo di bisezione implementato in `DoseCalculator.trovaPeriodoRestrizione` garantisce una tolleranza di 0.01 giorni.
 
 > Per l’implementazione completa dei modelli, vedi anche la sezione [Note tecniche e modelli matematici utilizzati](#note-tecniche-e-modelli-matematici-utilizzati).
+
+## Sistema a plugin
+<a name="sistema-a-plugin"></a>
+
+**DoseApp** può essere esteso senza toccare il core grazie a un sistema di plugin caricati all’avvio.
+
+| Cartella | Scopo |
+|----------|-------|
+| `plugins/` | contiene i file `.m` dei plugin |
+| `DoseAppPluginBase.m` | interfaccia astratta che tutti i plugin devono derivare |
+
+### Workflow
+
+1. **Avvio app** → `DoseApp` scansiona `plugins/*.m`.  
+2. Se la prima classe trovata eredita da `DoseAppPluginBase`, ne crea un’istanza.  
+3. Aggiunge una voce nel menu **Plugins**:  
+   ```matlab
+   uimenu(app.MenuPlugins,'Text',obj.pluginName(), ...
+          'MenuSelectedFcn',@(~,~)app.openPlugin(obj));
+
+Alla selezione la GUI principale chiama `openPlugin`, che apre una nuova `uifigure`
+e invoca `obj.init(appHandle, parentFig)`.
+
+### API essenziale
+```matlab
+classdef (Abstract) DoseAppPluginBase < handle
+    methods (Abstract)
+        name = pluginName(obj)                  % testo da mostrare nel menu
+        init(obj, appHandle, parentContainer)   % costruisce la UI del plugin
+    end
+end
+
+### Scheletro di un nuovo plugin
+```matlab
+classdef MyPlugin < DoseAppPluginBase
+    properties (Access = private)
+        App   % handle a DoseApp
+    end
+
+    function name = pluginName(~)
+        name = "My-Plugin";
+    end
+
+    function init(obj, app, parent)
+        obj.App = app;
+
+        % layout 2×2
+        gl = uigridlayout(parent,[2 2]);
+
+        uilabel(gl,"Text","Demo");
+
+        uibutton(gl,"Text","Run", ...
+            "ButtonPushedFcn",@(~,~)uialert(parent,"Done","My-Plugin"));
+    end
+end
+```
+
+
 
 ## Utilizzo della GUI
 
