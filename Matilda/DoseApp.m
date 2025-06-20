@@ -41,12 +41,14 @@ classdef DoseApp < matlab.apps.AppBase
         %  Menu per i plugin
         MenuPlugins         matlab.ui.container.Menu
         Plugins             cell
+        CustomKinetics     struct = struct('name',{},'fr',{},'lambda_eff',{});
     end
 
     properties (Access = private)
         modello    % Oggetto ModelloLineare
         pairMap    % factory restrittivi
-        pairMapOrd % factory ordinari     
+        pairMapOrd % factory ordinari 
+
     end
     properties (Access = private, Constant)
         % Tabella 6 AIFM-AIMN per 177Lu DOTATATE / PSMA
@@ -83,7 +85,7 @@ classdef DoseApp < matlab.apps.AppBase
 
             Tdis   = app.TDischargeField.Value;
             R_Tdis = rateo;
-            rph  = loadRadiopharmaceutical(rf,'radiopharmaceuticals.json');
+            rph = app.getKinetics(rf);
             fk0  = Farmacocinetica(rph.fr,rph.lambda_eff).aggiornaFrazioni(Tdis);
 
             for k = 1:numel(names)
@@ -155,7 +157,7 @@ classdef DoseApp < matlab.apps.AppBase
         selectedRF  = app.RadiofarmacoDropDown.Value;
 
         % --- farmacocinetica
-        rph = loadRadiopharmaceutical(selectedRF,'radiopharmaceuticals.json');
+        rph = app.getKinetics(selectedRF);
         fk  = Farmacocinetica(rph.fr,rph.lambda_eff).aggiornaFrazioni(T_discharge);
 
         % --- scenario scelto
@@ -181,7 +183,7 @@ classdef DoseApp < matlab.apps.AppBase
         R_Tdis = app.R_TdisField.Value;
         RF     = app.RadiofarmacoDropDown.Value;
 
-        rph = loadRadiopharmaceutical(RF,'radiopharmaceuticals.json');
+        rph = app.getKinetics(RF);
         fk0 = Farmacocinetica(rph.fr,rph.lambda_eff).aggiornaFrazioni(T_dis);
 
         out  = strings(numel(names)*2 ,1);   % *2 = riga vuota dopo ciascun risultato
@@ -378,10 +380,17 @@ classdef DoseApp < matlab.apps.AppBase
             app.RadiofarmacoPanel = uipanel(gl1,'Title','Radiofarmaco');
             app.RadiofarmacoPanel.Layout.Row    = [5 6];
             app.RadiofarmacoPanel.Layout.Column = [1 2];
+            % → Carico i nomi standard dal JSON
+            raw  = fileread('radiopharmaceuticals.json');
+            data = jsondecode(raw);
+            stdNames = {data.name};
+
+            % → Aggiungo l’opzione per la cinetica custom
+            allNames = [stdNames, {'Cinetica personalizzata'}];
+
             app.RadiofarmacoDropDown = uidropdown(app.RadiofarmacoPanel, ...
-                'Items', {'I-131 Carcinoma Tiroideo','I-131 Ipotiroidismo', ...
-                'Lu-177-DOTATATE','Lu-177-PSMA'}, ...
-                'Position',[10 35 200 22]);
+                'Items', allNames, ...
+                'Position',[10 35 200 22]);            
             app.CalcolaDoseButton = uibutton(app.RadiofarmacoPanel,'push', ...
                 'Text','Calcola Dose', ...
                 'Position',[10 5 120 28], ...
@@ -455,7 +464,18 @@ classdef DoseApp < matlab.apps.AppBase
             fig = uifigure('Name', pluginObj.pluginName(), 'Position',[200 200 400 300]);
             pluginObj.init(app, fig);
         end
-
+        function rph = getKinetics(app, name)
+            % Se è custom, lo prendo da CustomKinetics
+            idx = find(strcmp({app.CustomKinetics.name}, name),1);
+            if ~isempty(idx)
+                rph = app.CustomKinetics(idx);
+            elseif strcmp(name,'Cinetica personalizzata')
+                error('Prima definisci una cinetica custom nel plugin.');
+            else
+                % Altrimenti carico dal JSON
+                rph = loadRadiopharmaceutical(name,'radiopharmaceuticals.json');
+            end
+        end
         % … tutti i tuoi altri callback e helper (generaPDF, CalcolaDoseButtonPushed, ecc.) …
     end
 end

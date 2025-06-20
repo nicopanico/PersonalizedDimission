@@ -86,10 +86,42 @@ classdef BiExpKineticsPlugin < DoseAppPluginBase
                 uialert(obj.App.UIFigure, 'Fit biesponenziale fallito','Errore Fit');
                 return;
             end
-            % Mostra risultati
+            A1 = p(1);  A2 = p(2);
+            lam1_h = p(3); lam2_h = p(4);
+
+            % 1) Fractions f1,f2
+            A_tot = A1 + A2;
+            f1 = A1 / A_tot;
+            f2 = A2 / A_tot;
+
+            % 2) Converti lambda da [1/h] a [1/giorno]
+            lam1_d = lam1_h * 24;
+            lam2_d = lam2_h * 24;
+
+            
+            name = inputdlg('Nome per questa cinetica:','Esporta cinetica');
+            if isempty(name), return; end
+            name = name{1};
+
+            % — preparo la struct custom —
+            newK = struct( ...
+                'name',name, ...
+                'fr',[f1,f2], ...
+                'lambda_eff',[lam1_d,lam2_d] );
+
+            % — la salvo in app.CustomKinetics —
+            obj.App.CustomKinetics(end+1) = newK;
+
+            % — aggiorno il dropdown nella GUI principale —
+            items = obj.App.RadiofarmacoDropDown.Items;
+            items{end+1} = name;
+            obj.App.RadiofarmacoDropDown.Items = items;
+
+            % Mostra risultati nel formato Buonamici
             txt = sprintf([
-                'A1 = %.3g\nA2 = %.3g\n', ...
-                '\lambda1 = %.3f 1/h\n\lambda2 = %.3f 1/h'], p(1),p(2),p(3),p(4));
+                'f₁ = %.3f   λ₁ = %.3f  1/d\n' ...
+                'f₂ = %.3f   λ₂ = %.3f  1/d'], ...
+                f1, lam1_d, f2, lam2_d);
             obj.ResultText.Value = txt;
         end
     end
