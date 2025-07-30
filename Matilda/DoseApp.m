@@ -54,7 +54,10 @@ classdef DoseApp < matlab.apps.AppBase
         % Tabella 6 AIFM-AIMN per 177Lu DOTATATE / PSMA
         travelLU = struct( ...          % rateo max (µSv/h)  →  ore consentite
             'th',   [ 5  10  15  20  25 ], ...   % soglie (superiore non incluso)
-            'hMax', [ 9.5  5  3.5  2.5  2 ]);    % ore di viaggio ammesse
+            'hMax', [ 9.5  5  3.5  2.5  2 ]);
+        travelI131 = struct( ...
+        'th',   [5 10 15 20],  ...          % soglie superiori non incluse
+        'hMax', [4 2 1 0.5] );           % 4 classi → 4 valori% ore di viaggio ammesse
     end
 
     % ========================= CALLBACKS =========================
@@ -89,34 +92,34 @@ classdef DoseApp < matlab.apps.AppBase
             fk0  = Farmacocinetica(rph.fr,rph.lambda_eff).aggiornaFrazioni(Tdis);
 
             for k = 1:numel(names)
-                restr = app.pairMap.(names{k})(app.modello);
-                ord   = app.selectOrdScenario(names{k});
-                dc    = DoseCalculator(restr,ord,fk0,R_Tdis);
+                scenName = names{k};
+                restr = app.pairMap.(scenName)(app.modello);
+                ord   = app.selectOrdScenario(scenName);
+                dc    = DoseCalculator(restr, ord, fk0, R_Tdis);
 
-                Tres  = dc.trovaPeriodoRestrizione(restr.DoseConstraint);
+                %— T_res nominale
+                Tres = dc.trovaPeriodoRestrizione(restr.DoseConstraint);
                 if contains(rf,'DOTATATE','IgnoreCase',true) && Tres < 5
-                    Tres = 5;                       % minimo clinico
+                    Tres = 5;        % minimo clinico per 177Lu
                 end
 
-                % -------- descrizione pratica e gestione "Trasporto" --------------
-                descr = app.restr2human(restr.nome);   % descrizione di base
+                %— descrizione base
+                descr = app.restr2human(restr.nome);
 
-                if strcmp(names{k},'Trasporto')
-                    isLu = contains(rf,{'DOTATATE','PSMA'},'IgnoreCase',true);
-
-                    if isLu            % ¹⁷⁷Lu: tabella ore di viaggio
-                        oreMax = maxOreViaggio(app, R_Tdis);
-                        descr  = sprintf(['Nei primi 2 gg evita mezzi pubblici oltre %.1f h totali. ', ...
-                            'Auto privata consentita se siedi sul sedile posteriore ', ...
-                            '(≥1 m dal guidatore).'], oreMax);
-                        Tres   = NaN;   % → il PDF mostrerà “–”
-                    else               % I-131: regola fissa 30 min
-                        descr  = ['Nei primi 2 gg viaggio max 30 min totali su mezzi pubblici. ', ...
-                            'Auto privata consentita (≥1 m).'];
+                %— caso speciale Trasporto
+                if strcmpi(scenName,'Trasporto')
+                    if contains(rf, {'DOTATATE','PSMA'}, 'IgnoreCase',true)
+                        oreMax = maxOreViaggio(app, R_Tdis, 'Lu');
+                    else
+                        oreMax = maxOreViaggio(app, R_Tdis, 'I131');
                     end
+                    descr = sprintf(['Nei primi 2 gg viaggio max %.1f h totali su mezzi pubblici. ', ...
+                        'Auto privata consentita (sedile posteriore ≥1 m).'], oreMax);
+                    Tres = NaN;   % in tabella comparirà “–”
                 end
 
-                rep.addScenario(restr.nome, Tres, descr);
+                %— finalmente aggiungi lo scenario al report
+                rep.addScenario(restr.nome,  Tres,  descr);
             end
 
             % ---- salvataggio -----------------------------------------------------
@@ -128,29 +131,36 @@ classdef DoseApp < matlab.apps.AppBase
         end
 
         %% ---------- helper: descrizione “leggera” per la GUI ----------------------
-        function txt = restr2human(~,nomeScen)
-            switch erase(lower(nomeScen)," restr.")
-                case "partner"
+        function txt = restr2human(~, nomeScen)
+            % Uniforma il nome scenario per evitare problemi di mapping
+            nomeScen = lower(strtrim(nomeScen));
+            nomeScen = strrep(nomeScen, ' restr.', '');
+            nomeScen = strrep(nomeScen, ' aa', '');
+            nomeScen = strrep(nomeScen, '  ', ' ');
+
+            % Mapping tra chiavi normalizzate e descrizioni pratiche
+            switch nomeScen
+                case {'partner'}
                     txt = "Letti separati; contatto ≤2 h/gg a ~1 m";
-                case "bambino <2"
+                case {'bambino <2'}
                     txt = "1.5 h a 1 m e 2 h a 2 m";
-                case "bambino 2-5"
+                case {'bambino 2–5', 'bambino 2-5'}
                     txt = "1.5 h a 1 m e 1.5 h a 2 m";
-                case "bambino 5-11"
+                case {'bambino 5–11', 'bambino 5-11'}
                     txt = "≤2 h/g a 1 m; gioco a 2 m";
-                case "colleghi"
+                case {'colleghi', 'colleghi lavoro'}
                     txt = "Rientro con distanza ≥1 m (o ≥2 m)";
-                case "trasporto"
+                case {'trasporto', 'trasporto pubblico'}
                     txt = "Limitazioni mezzi pubblici nei primi 2 gg";
-                case "incinta"
+                case {'incinta', 'donna incinta'}
                     txt = "≥1 m per 6 h/gg; niente contatto ravvicinato";
                 otherwise
-                    txt = "";
+                    txt = " ";
             end
         end
-        
-    
-    function PlotDoseButtonPushed(app)
+
+
+        function PlotDoseButtonPushed(app)
         % --- parametri clinici
         T_discharge = app.TDischargeField.Value;
         R_Tdis      = app.R_TdisField.Value;
@@ -194,20 +204,22 @@ classdef DoseApp < matlab.apps.AppBase
             ord   = app.selectOrdScenario(names{k});
             dc    = DoseCalculator(restr,ord,fk0,R_Tdis);
 
-            isLu  = contains(RF,'DOTATATE','IgnoreCase',true) || ...
-                contains(RF,'PSMA','IgnoreCase',true);
-            isTrav = strcmp(names{k},'Trasporto');
+            
+            isLu   = contains(RF, {'DOTATATE','PSMA'}, 'IgnoreCase', true);
+            isTrav = strcmp(names{k}, 'Trasporto');
 
-            if isLu && isTrav
-                % -------- 177Lu | Trasporto ---------------------------------
-                oreMax  = maxOreViaggio(app, R_Tdis);     % tabella AIFM-AIMN
-                TresStr = '–';                           % nessun T_res
+            if isTrav               % è lo scenario “Trasporto”
+                if isLu             % —— 177Lu
+                    oreMax  = maxOreViaggio(app, R_Tdis, 'Lu');
+                else                % —— I‑131
+                    oreMax  = maxOreViaggio(app, R_Tdis, 'I131');
+                end
+                TresStr = '–';                      % nessun T_res numerico
                 extra   = sprintf(' | Viaggio max %.1f h', oreMax);
             else
                 Tres    = dc.trovaPeriodoRestrizione(restr.DoseConstraint);
-                % Forza minimo 5 gg per DOTATATE, se vuoi mantenerlo:
-                if isLu && Tres < 5, Tres = 5; end
-                TresStr = sprintf('%.1f',Tres);
+                if isLu && Tres < 5, Tres = 5; end  % minimo clinico 5 gg per DOTATATE
+                TresStr = sprintf('%.1f', Tres);
                 extra   = '';
             end
 
@@ -236,17 +248,23 @@ classdef DoseApp < matlab.apps.AppBase
         end
     end
     % -----------helper per ore viaggio---------
-    function h = maxOreViaggio(app, rateo)
-        % Ritorna ore massimo viaggio secondo Tab. 6 (177Lu)
-        th   = app.travelLU.th;
-        hMax = app.travelLU.hMax;
-
-        idx = find(rateo < th, 1, 'first');
-        if isempty(idx)
-            h = hMax(end);    % se supera la soglia più alta
-        else
-            h = hMax(idx);
+    function h = maxOreViaggio(app, rateo, isotope)
+        switch isotope
+            case 'Lu'
+                tbl = app.travelLU;
+            case 'I131'
+                tbl = app.travelI131;
+            otherwise          % fallback conservativo
+                h = 0;  return;
         end
+      
+        idx = find(rateo < tbl.th, 1, 'first');
+        if isempty(idx)
+            h = tbl.hMax(end);
+        else
+            h = tbl.hMax(idx);
+        end
+
     end
     function list = getAllSelected(app)
         list = {};
