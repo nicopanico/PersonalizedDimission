@@ -3,12 +3,13 @@
 ## Indice
 - [Introduzione](#introduzione)
 - [Requisiti software e installazione](#requisiti-software-e-installazione)
-- [Modello di calcolo della dose](#modello-di-calcolo-della-dose)      
+- [Modello di calcolo della dose](#modello-di-calcolo-della-dose)
+- [Sistema a Plugin](#sistema-a-plugin)
+- [Esempio di plugin – BiExpKineticsPlugin](#esempio-di-plugin-biexpkineticsplugin) 
 - [Utilizzo della GUI](#utilizzo-della-gui)
 - [Parametri clinici e farmacocinetica](#parametri-clinici-e-farmacocinetica)
 - [Scenari di esposizione](#scenari-di-esposizione)
 - [Report PDF di istruzioni per il paziente](#report-pdf-di-istruzioni-per-il-paziente)
-- [Modifica e aggiornamento dati (JSON)](#modifica-e-aggiornamento-dati-json)
 - [Note tecniche e modelli matematici utilizzati](#note-tecniche-e-modelli-matematici-utilizzati)
 - [Riferimenti e contatti](#riferimenti-e-contatti)
 
@@ -104,6 +105,91 @@ dove $D_{\text{restr}}$ e $D_{\text{ord}}$ sono gli integrali dose-tempo sulle d
 Il metodo di bisezione implementato in `DoseCalculator.trovaPeriodoRestrizione` garantisce una tolleranza di 0.01 giorni.
 
 > Per l’implementazione completa dei modelli, vedi anche la sezione [Note tecniche e modelli matematici utilizzati](#note-tecniche-e-modelli-matematici-utilizzati).
+
+## Sistema a plugin
+<a name="sistema-a-plugin"></a>
+
+**DoseApp** può essere esteso senza toccare il core grazie a un sistema di plugin caricati all’avvio.
+
+| Cartella | Scopo |
+|----------|-------|
+| `plugins/` | contiene i file `.m` dei plugin |
+| `DoseAppPluginBase.m` | interfaccia astratta che tutti i plugin devono derivare |
+
+### Workflow
+
+1. **Avvio app** → `DoseApp` scansiona `plugins/*.m`.  
+2. Se la prima classe trovata eredita da `DoseAppPluginBase`, ne crea un’istanza.  
+3. Aggiunge una voce nel menu **Plugins**:  
+   ```matlab
+   uimenu(app.MenuPlugins,'Text',obj.pluginName(), ...
+          'MenuSelectedFcn',@(~,~)app.openPlugin(obj));
+
+Alla selezione la GUI principale chiama `openPlugin`, che apre una nuova `uifigure`
+e invoca `obj.init(appHandle, parentFig)`.
+
+### API essenziale
+```matlab
+classdef (Abstract) DoseAppPluginBase < handle
+    methods (Abstract)
+        name = pluginName(obj)                  % testo da mostrare nel menu
+        init(obj, appHandle, parentContainer)   % costruisce la UI del plugin
+    end
+end
+
+### Scheletro di un nuovo plugin
+```matlab
+classdef MyPlugin < DoseAppPluginBase
+    properties (Access = private)
+        App   % handle a DoseApp
+    end
+
+    function name = pluginName(~)
+        name = "My-Plugin";
+    end
+
+    function init(obj, app, parent)
+        obj.App = app;
+
+        % layout 2×2
+        gl = uigridlayout(parent,[2 2]);
+
+        uilabel(gl,"Text","Demo");
+
+        uibutton(gl,"Text","Run", ...
+            "ButtonPushedFcn",@(~,~)uialert(parent,"Done","My-Plugin"));
+    end
+end
+```
+## Esempio di plugin – **BiExpKineticsPlugin**
+<a name="esempio-di-plugin-biexpkineticsplugin"></a>
+
+Il plugin **BiExpKineticsPlugin** consente di stimare in pochi secondi i
+parametri di una cinetica bi-esponenziale a partire da **quattro misure di
+rateo** (µSv · h⁻¹) effettuate dopo la somministrazione del radiofarmaco.
+
+### Obiettivo
+
+Stimare  
+
+$$
+A(t)=A_{\text{tot}}\,[f_{1}e^{-\lambda_{1}t}+f_{2}e^{-\lambda_{2}t}],
+\qquad
+f_{1}+f_{2}=1
+$$
+
+ricavando le **frazioni** $(f_{1},f_{2})$ e le **costanti** di decadimento
+$(\lambda_{1},\lambda_{2})$ (in giorni⁻¹) tramite **lsqcurvefit**.
+
+### Interfaccia rapida
+
+| Campo | Descrizione |
+|------|-------------|
+| **Ora [h]** (×4) | tempo della misura (es. 0, 4, 24, 48 h) |
+| **Rateo [µSv/h]** (×4) | valore corrispondente misurato a 1 m |
+| **Stima cinetica** | avvia il fit non-lineare |
+| **Risultati** | mostra \(f_{1},\lambda_{1},f_{2},\lambda_{2}\) in formato Buonamici |
+
 
 ## Utilizzo della GUI
 
@@ -379,3 +465,140 @@ calcolate da **DoseApp**.
 * **Alcune caselle della griglia semaforo mancano di bordo.**  
   MATLAB ≤ R2021b semplifica i bordi sottili in stampa.  
   Aumenta lo spessore (`'0.5pt'`) in `borderThin` se necessario.
+
+  ## Note tecniche e modelli matematici utilizzati
+<a name="note-tecniche-e-modelli-matematici-utilizzati"></a>
+
+Questa sezione descrive – in forma sintetica ma completa – i modelli fisici,
+radiobiologici e numerico-computazionali alla base di **DoseApp**.
+
+---
+
+### 1. Modello geometrico ― “line-source” assiale
+
+| Simbolo | Valore predefinito | Significato                          |
+|---------|-------------------|--------------------------------------|
+| `H`     | 1.70 m            | altezza della sorgente lineare (paziente) |
+| `Γ`     | `H / atan(H/2)`   | costante di normalizzazione s.t. **Ḋ(1 m) = 1 µSv h⁻¹** per *A*<sub>tot</sub>=1 |
+
+Dose-rate puntuale a distanza *d*:
+
+$$
+\dot D(d)=
+\Gamma\,
+\frac{A_{\text{tot}}}{H\,d}\;
+\arctan\!\Bigl(\tfrac{H}{2d}\Bigr)
+$$
+
+Il **fattore geometrico** di correzione impiegato negli scenari è
+
+$$
+F_{\text{corr}}(d)=\frac{\dot D(d)}{\dot D(1\text{ m})}
+$$
+
+---
+
+### 2. Modello farmacocinetico bi-esponenziale
+
+Attività residua nel corpo del paziente:
+
+$$
+A(t)=A_{\text{tot}}\,
+\Bigl[f_1\,e^{-\lambda_1 t}+f_2\,e^{-\lambda_2 t}\Bigr],
+\quad
+f_1+f_2=1
+$$
+
+*Input* dall’array `radiopharmaceuticals.json`  
+(unità di misura: λ in **d⁻¹**).
+
+---
+
+### 3. Integrazione dose su due fasi
+
+Per ogni scenario si distinguono:
+
+| Fase | Intervallo | Contatto | Dose parziale |
+|------|------------|----------|---------------|
+| **Restrittiva** | 0 → *T*<sub>res</sub> | distanze/tempi dello scenario “restr.” | \(D_{\text{restr}} = \sum_i \dfrac{f_i}{\lambda_i}\,F_r\,[1-e^{-\lambda_i T_{\text{res}}}]\) |
+| **Ordinaria**   | *T*<sub>res</sub> → ∞ | distanze/tempi scenario “ord.”        | \(D_{\text{ord}}  = \sum_i \dfrac{f_i}{\lambda_i}\,F_o\, e^{-\lambda_i T_{\text{res}}}\) |
+
+Dose settimanale visualizzata in GUI:
+
+$$
+D_{7\text{ gg}} = (\dot D_{T_\text{dis}})\;24\
+\frac{D_{\text{restr}}+D_{\text{ord}}}{1000}\\text{[mSv]}
+$$
+
+dove $(\dot D_{T_\text{dis}})$ è il rateo alla dimissione (µSv h⁻¹).
+
+---
+
+### 4. Calcolo ottimo \(T_{\text{res}}\)
+
+Si risolve l’equazione
+
+$$
+D_{\text{restr}}(T)+D_{\text{ord}}(T)=\text{DoseConstraint}
+$$
+
+mediante **bisezione** su \([0.1,\,60]\) giorni, tolleranza `0.01` d.
+ 
+*Worst-case* → 20 iterazioni (trascurabile in MATLAB).
+
+---
+
+### 5. Stima parametri da quattro misure (plugin)
+
+Fit non-lineare (LSQ) del modello:
+
+$$
+y(t)=A_1 e^{-\lambda_1 t}+A_2 e^{-\lambda_2 t}
+$$
+
+*Toolbox* utilizzato: **Optimization Toolbox** → `lsqcurvefit`  
+   • limiti `lb=[0,0,0,0]`, `ub=Inf`.  
+Output convertito in \(f_i,\lambda_i\) (λ in d⁻¹) e
+(*opzionale*) esportato in `radiopharmaceuticals.json`.
+
+---
+
+### 6. Precisione numerica
+
+| Quantità | Tolleranza / Note |
+|----------|------------------|
+| integrazione dose | analitica → errore macchina |
+| bisezione \(T_{\text{res}}\) | ≤ 0.01 d |
+| somma frazioni \(f_1+f_2\) | verificata | 
+| unità | λ sempre in **d⁻¹** dopo conversione |
+
+
+
+---
+
+### 7. Riferimenti principali
+
+| ID | Citazione sintetica |
+|----|---------------------|
+| **[BB25]** | Banci Buonamici *et al.* “Discharge optimisation after radionuclide therapy”, *J Radiol Prot* 43 (2025) 021504. |
+| **[H06]** | Hänscheid *et al.* “¹³¹I time–activity curves…”, *J Nucl Med* 47 (2006) 1481-1487. |
+| **[G12]** | Garske *et al.* “Individualised dosimetry with ¹⁷⁷Lu-DOTATATE”, *EJNMMI* 39 (2012) 1688-1696. |
+
+Per la bibliografia completa vedi la sezione **Riferimenti** del README.
+
+## Riferimenti e contatti
+<a name="riferimenti-e-contatti"></a>
+
+### Riferimento bibliografico chiave
+| ID | Citazione |
+|----|-----------|
+| **[BB25]** | Banci Buonamici _et al._ “Discharge optimisation after radionuclide therapy.” **J Radiol Prot** 43 (2025) 021504. |
+
+### Contatti  
+Per domande / segnalazioni:
+
+| Nome | Ruolo / Struttura | Email |
+|------|-------------------|-------|
+| Federica Fioroni | Fisica Sanitaria – AUSL Reggio Emilia | federica.fioroni@ausl.re.it |
+| Nicola Panico   | Fisica Sanitaria – AUSL Reggio Emilia | nicola.panico@ausl.re.it   |
+| Elisa Grassi    | Fisica Sanitaria – AUSL Reggio Emilia | elisa.grassi@ausl.re.it    
