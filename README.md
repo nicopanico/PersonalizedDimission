@@ -90,14 +90,10 @@ F_{\text{corr}}(d)=
 \frac{\dot D(d)}{\dot D(1\text{ m})}
 $$
 
-Il periodo di restrizione ottimale $T_{\text{res}}$ si ottiene risolvendo:
+Il periodo di restrizione ottimale $T_{	ext{res}}$ si ottiene risolvendo:
 
 $$
-D_{\text{restr}}\bigl(T_{\text{res}}\bigr)
-+
-D_{\text{ord}}\bigl(T_{\text{res}}\bigr)
-=
-\text{DoseConstraint}
+D_{	ext{restr}}igl(T_{	ext{res}}igr) + D_{	ext{ord}}igl(T_{	ext{res}}igr) = 	ext{DoseConstraint}
 $$
 
 dove $D_{\text{restr}}$ e $D_{\text{ord}}$ sono gli integrali dose-tempo sulle due fasi (restrittiva / ordinaria), in coerenza con l’impostazione “two-phase” di **Banci Buonamici et al. (2025)**.  
@@ -212,6 +208,9 @@ ricavando le **frazioni** $(f_{1},f_{2})$ e le **costanti** di decadimento $(\la
 ---
 
 ## Utilizzo della GUI
+
+
+![Panoramica GUI](img/gui_overview.png)
 
 > Nota: le immagini sotto sono indicative. In alcune versioni la GUI può variare (es. editor scenari, modalità isolamento totale).
 
@@ -434,6 +433,9 @@ Le personalizzazioni sono mantenute in memoria durante la sessione tramite `cust
 ---
 
 ## Report PDF di istruzioni per il paziente
+
+![Anteprima report](img/EsempioInformativoPDF.png)
+
 
 Il foglio di dimissione in formato **PDF** fornisce al paziente, in linguaggio semplice, le restrizioni post-terapia personalizzate calcolate da DoseApp.
 
