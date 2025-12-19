@@ -26,6 +26,13 @@ function results = calcolateTime(T_discharge, R_Tdis, selectedRF, scenarioRestrF
     else
         ordScenario = scenarioOrdFunc(modello);
     end
+    
+    if contains(selectedRF,'I-131','IgnoreCase',true)
+        factor = modello.calcolaFattoreCorrezione(1, 2); % dose(1 m)/dose(2 m)
+        R_Tdis_eff = R_Tdis * factor;
+    else
+        R_Tdis_eff = R_Tdis;
+    end
 
     calc_dose = DoseCalculator(restrScenario, ordScenario, fk, R_Tdis);
     

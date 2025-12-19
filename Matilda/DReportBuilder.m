@@ -1,3 +1,19 @@
+%#function mlreportgen.dom.Document
+%#function mlreportgen.dom.Paragraph
+%#function mlreportgen.dom.Heading1
+%#function mlreportgen.dom.Heading3
+%#function mlreportgen.dom.Table
+%#function mlreportgen.dom.TableRow
+%#function mlreportgen.dom.TableEntry
+%#function mlreportgen.dom.Image
+%#function mlreportgen.dom.FontFamily
+%#function mlreportgen.dom.FontSize
+%#function mlreportgen.dom.BackgroundColor
+%#function mlreportgen.dom.HAlign
+%#function mlreportgen.dom.Width
+%#function mlreportgen.dom.Height
+%#function mlreportgen.dom.Border
+%#function mlreportgen.dom.OuterMargin
 classdef DReportBuilder < handle
     % PDF istruzioni dimissione – A4 landscape, 40 giorni – MATLAB R2021b
 

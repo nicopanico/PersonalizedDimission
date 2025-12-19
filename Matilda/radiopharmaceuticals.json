@@ -1,9 +1,9 @@
 [
-    {
-        "name": "I-131 Carcinoma Tiroideo",
-        "fr":         [0.70, 0.30],
-        "lambda_eff": [2.16, 0.0866]  
-    },
+  {
+    "name": "I-131 Carcinoma Tiroideo",
+    "fr": [0.70, 0.30],
+    "lambda_eff": [2.16, 0.0866]
+  },
   {
     "name": "I-131 Ipotiroidismo",
     "fr": [0.20, 0.80],
